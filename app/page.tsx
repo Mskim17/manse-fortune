@@ -142,28 +142,28 @@ const elementDirection: Record<string, string> = {
 // 오행별 색상 코드
 const elementColorCodes: Record<string, { name: string; hex: string; desc: string }[]> = {
   목: [
-    { name: "포레스트그린", hex: "#2D5A1B", desc: "목 기운 강화. 상의" },
-    { name: "올리브·카키", hex: "#6B6B2A", desc: "土와 조화. 하의" },
+    { name: "포레스트그린", hex: "#2D5A1B", desc: "목 기운 강화. 메인" },
+    { name: "올리브·카키", hex: "#6B6B2A", desc: "土와 조화. 서브" },
     { name: "크림·베이지", hex: "#F5F0E8", desc: "포인트. 소품" },
   ],
   화: [
-    { name: "버건디·레드", hex: "#8B1A1A", desc: "화 기운 강화. 상의" },
-    { name: "오렌지·주황", hex: "#C8640A", desc: "활동 에너지. 포인트" },
-    { name: "아이보리", hex: "#FFFFF0", desc: "균형. 하의" },
+    { name: "버건디·레드", hex: "#8B1A1A", desc: "화 기운 강화. 메인" },
+    { name: "오렌지·핑크", hex: "#C8640A", desc: "활동 에너지. 서브" },
+    { name: "아이보리", hex: "#FFFFF0", desc: "균형. 포인트" },
   ],
   토: [
-    { name: "머스타드·옐로", hex: "#C9A020", desc: "토 기운 강화. 상의" },
-    { name: "브라운·카멜", hex: "#7B4B2A", desc: "안정감. 하의" },
+    { name: "머스타드·옐로", hex: "#C9A020", desc: "토 기운 강화. 메인" },
+    { name: "브라운·카멜", hex: "#7B4B2A", desc: "안정감. 서브" },
     { name: "크림·베이지", hex: "#F5F0E8", desc: "포인트. 소품" },
   ],
   금: [
-    { name: "실버·라이트그레이", hex: "#C0C0C0", desc: "금 기운 강화. 상의" },
-    { name: "화이트·오프화이트", hex: "#F8F8F8", desc: "청결함. 하의" },
+    { name: "실버·라이트그레이", hex: "#C0C0C0", desc: "금 기운 강화. 메인" },
+    { name: "화이트·오프화이트", hex: "#F8F8F8", desc: "청결함. 서브" },
     { name: "다크네이비", hex: "#1a3a5c", desc: "壬水 보강. 포인트" },
   ],
   수: [
-    { name: "다크네이비·블랙", hex: "#1a3a5c", desc: "수 기운 강화. 상의" },
-    { name: "차콜·다크그레이", hex: "#2D2D2D", desc: "깊이감. 하의" },
+    { name: "다크네이비·블랙", hex: "#1a3a5c", desc: "수 기운 강화. 메인" },
+    { name: "차콜·다크그레이", hex: "#2D2D2D", desc: "깊이감. 서브" },
     { name: "실버·그레이", hex: "#C0C0C0", desc: "균형. 포인트" },
   ],
 };
