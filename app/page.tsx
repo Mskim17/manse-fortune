@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useTheme } from "next-themes";
 
 interface BirthInfo {
   year: number;
@@ -161,7 +162,7 @@ const elementColorCodes: Record<string, { name: string; hex: string; desc: strin
     { name: "다크네이비", hex: "#1a3a5c", desc: "壬水 보강. 포인트" },
   ],
   수: [
-    { name: "다크네이비", hex: "#1a3a5c", desc: "수 기운 강화. 상의" },
+    { name: "다크네이비·블랙", hex: "#1a3a5c", desc: "수 기운 강화. 상의" },
     { name: "차콜·다크그레이", hex: "#2D2D2D", desc: "깊이감. 하의" },
     { name: "실버·그레이", hex: "#C0C0C0", desc: "균형. 포인트" },
   ],
@@ -179,6 +180,10 @@ const getColors = (dayPillar: string) => {
 };
 
 export default function Home() {
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   const [birth, setBirth] = useState<BirthInfo>({
     year: 1982, month: 1, day: 17, hour: 11, minute: 25, name: ""
   });
@@ -249,9 +254,9 @@ export default function Home() {
   };
 
   const inputStyle = {
-    background: "#15151f",
-    border: "1px solid rgba(255,255,255,0.1)",
-    color: "#e8e8f0",
+    background: "var(--input-bg)",
+    border: "1px solid var(--border)",
+    color: "var(--text)",
     borderRadius: 8,
     padding: "10px 14px",
     fontSize: 15,
@@ -260,18 +265,29 @@ export default function Home() {
   };
 
   return (
-    <main style={{ minHeight: "100vh", background: "#0a0a0f", color: "#e8e8f0", fontFamily: "Pretendard, -apple-system, sans-serif" }}>
+    <main style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)", fontFamily: "Pretendard, -apple-system, sans-serif" }}>
 
       {/* 헤더 */}
       <div style={{ padding: "20px 20px 0", maxWidth: 480, margin: "0 auto" }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>🌙 만세력 운세</h1>
-        <p style={{ fontSize: 13, color: "#7a7a9a", marginBottom: 20 }}>사주 기반 일일 운세 분석</p>
-
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+          <div>
+            <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)" }}>🌙 만세력 운세</h1>
+            <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 20 }}>사주 기반 일일 운세 분석</p>
+          </div>
+          {mounted && (
+            <button
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              style={{ position: "relative", width: 48, height: 26, borderRadius: 999, background: theme === "dark" ? "#6c63ff" : "#ccc", border: "none", cursor: "pointer", transition: "background 0.3s", flexShrink: 0, marginTop: 4 }}
+            >
+              <div style={{ position: "absolute", top: 3, left: theme === "dark" ? 25 : 3, width: 20, height: 20, borderRadius: "50%", background: "white", transition: "left 0.3s", boxShadow: "0 1px 4px rgba(0,0,0,0.3)" }} />
+            </button>
+          )}
+        </div>
         {/* 탭 */}
-        <div style={{ display: "flex", gap: 4, marginBottom: 24, background: "#111118", borderRadius: 10, padding: 4 }}>
+        <div style={{ display: "flex", gap: 4, marginBottom: 24, background: "var(--bg2)", borderRadius: 10, padding: 4 }}>
           {[["fortune", "운세 보기"], ["birth", "내 정보"]].map(([tab, label]) => (
             <button key={tab} onClick={() => setActiveTab(tab as any)}
-              style={{ flex: 1, padding: "10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 14, fontWeight: 600, fontFamily: "inherit", background: activeTab === tab ? "#6c63ff" : "transparent", color: activeTab === tab ? "white" : "#7a7a9a", transition: "all 0.2s" }}>
+              style={{ flex: 1, padding: "10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 14, fontWeight: 600, fontFamily: "inherit", background: activeTab === tab ? "#6c63ff" : "transparent", color: activeTab === tab ? "white" : "var(--muted)", transition: "all 0.2s" }}>
               {label}
             </button>
           ))}
@@ -283,26 +299,26 @@ export default function Home() {
         {/* 내 정보 탭 */}
         {activeTab === "birth" && (
           <div>
-            <div style={{ background: "#111118", borderRadius: 12, padding: 20, marginBottom: 16 }}>
-              <p style={{ fontSize: 13, color: "#7a7a9a", marginBottom: 16 }}>생년월일시를 입력하면 자동으로 사주를 계산해요.</p>
+            <div style={{ background: "var(--bg2)", borderRadius: 12, padding: 20, marginBottom: 16 }}>
+              <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16 }}>생년월일시를 입력하면 자동으로 사주를 계산해요.</p>
 
-              <label style={{ fontSize: 12, color: "#7a7a9a", display: "block", marginBottom: 6 }}>이름 (선택)</label>
+              <label style={{ fontSize: 12, color: "var(--muted)", display: "block", marginBottom: 6 }}>이름 (선택)</label>
               <input value={birth.name} onChange={(e) => setBirth({ ...birth, name: e.target.value })}
                 placeholder="이름 입력" style={{ ...inputStyle, marginBottom: 14 }} />
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 14 }}>
                 <div>
-                  <label style={{ fontSize: 12, color: "#7a7a9a", display: "block", marginBottom: 6 }}>년</label>
+                  <label style={{ fontSize: 12, color: "var(--muted)", display: "block", marginBottom: 6 }}>년</label>
                   <input type="number" value={birth.year} onChange={(e) => setBirth({ ...birth, year: Number(e.target.value) })}
                     style={inputStyle} />
                 </div>
                 <div>
-                  <label style={{ fontSize: 12, color: "#7a7a9a", display: "block", marginBottom: 6 }}>월</label>
+                  <label style={{ fontSize: 12, color: "var(--muted)", display: "block", marginBottom: 6 }}>월</label>
                   <input type="number" min={1} max={12} value={birth.month} onChange={(e) => setBirth({ ...birth, month: Number(e.target.value) })}
                     style={inputStyle} />
                 </div>
                 <div>
-                  <label style={{ fontSize: 12, color: "#7a7a9a", display: "block", marginBottom: 6 }}>일</label>
+                  <label style={{ fontSize: 12, color: "var(--muted)", display: "block", marginBottom: 6 }}>일</label>
                   <input type="number" min={1} max={31} value={birth.day} onChange={(e) => setBirth({ ...birth, day: Number(e.target.value) })}
                     style={inputStyle} />
                 </div>
@@ -310,12 +326,12 @@ export default function Home() {
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 20 }}>
                 <div>
-                  <label style={{ fontSize: 12, color: "#7a7a9a", display: "block", marginBottom: 6 }}>시 (0~23)</label>
+                  <label style={{ fontSize: 12, color: "var(--muted)", display: "block", marginBottom: 6 }}>시 (0~23)</label>
                   <input type="number" min={0} max={23} value={birth.hour} onChange={(e) => setBirth({ ...birth, hour: Number(e.target.value) })}
                     style={inputStyle} />
                 </div>
                 <div>
-                  <label style={{ fontSize: 12, color: "#7a7a9a", display: "block", marginBottom: 6 }}>분</label>
+                  <label style={{ fontSize: 12, color: "var(--muted)", display: "block", marginBottom: 6 }}>분</label>
                   <input type="number" min={0} max={59} value={birth.minute} onChange={(e) => setBirth({ ...birth, minute: Number(e.target.value) })}
                     style={inputStyle} />
                 </div>
@@ -343,12 +359,12 @@ export default function Home() {
             )}
 
             {/* 날짜 선택 */}
-            <div style={{ background: "#111118", borderRadius: 12, padding: 16, marginBottom: 16 }}>
-              <label style={{ fontSize: 12, color: "#7a7a9a", display: "block", marginBottom: 8 }}>운세 날짜 선택</label>
+            <div style={{ background: "var(--bg2)", borderRadius: 12, padding: 16, marginBottom: 16 }}>
+              <label style={{ fontSize: 12, color: "var(--muted)", display: "block", marginBottom: 8 }}>운세 날짜 선택</label>
               <input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)}
                 style={{ ...inputStyle, marginBottom: 12 }} />
               <button onClick={analyze} disabled={loading || !saved}
-                style={{ width: "100%", padding: "14px", background: loading || !saved ? "#3a3a5c" : "#6c63ff", color: loading || !saved ? "#7a7a9a" : "white", border: "none", borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: loading || !saved ? "not-allowed" : "pointer", fontFamily: "inherit", transition: "background 0.2s" }}>
+                style={{ width: "100%", padding: "14px", background: loading || !saved ? "#3a3a5c" : "#6c63ff", color: loading || !saved ? "var(--muted)" : "white", border: "none", borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: loading || !saved ? "not-allowed" : "pointer", fontFamily: "inherit", transition: "background 0.2s" }}>
                 {loading ? "분석 중..." : "🔮 운세 분석하기"}
               </button>
             </div>
@@ -357,12 +373,12 @@ export default function Home() {
             {result && (
               <div>
                 {/* 일진 정보 */}
-                <div style={{ background: "#111118", borderRadius: 12, padding: 16, marginBottom: 12 }}>
+                <div style={{ background: "var(--bg2)", borderRadius: 12, padding: 16, marginBottom: 12 }}>
                   <p style={{ fontSize: 11, color: "#6c63ff", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>// 오늘 일진</p>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 12 }}>
                     {[["세운", result.yearPillar], ["월건", result.monthPillar], ["일진", result.dayPillar]].map(([label, value]) => (
-                      <div key={label} style={{ background: "#15151f", borderRadius: 8, padding: "12px 8px", textAlign: "center" }}>
-                        <div style={{ fontSize: 11, color: "#7a7a9a", marginBottom: 6 }}>{label}</div>
+                      <div key={label} style={{ background: "var(--card)", borderRadius: 8, padding: "12px 8px", textAlign: "center" }}>
+                        <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 6 }}>{label}</div>
                         <div style={{ fontSize: 20, fontWeight: 700, color: "#00d4aa" }}>{value}</div>
                       </div>
                     ))}
@@ -372,59 +388,59 @@ export default function Home() {
                   <p style={{ fontSize: 11, color: "#6c63ff", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>// 사주 원국</p>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
                     {[["시", result.saju.hour], ["일", result.saju.day], ["월", result.saju.month], ["년", result.saju.year]].map(([label, value]) => (
-                      <div key={label} style={{ background: "#15151f", borderRadius: 8, padding: "10px 6px", textAlign: "center" }}>
-                        <div style={{ fontSize: 11, color: "#7a7a9a", marginBottom: 4 }}>{label}</div>
-                        <div style={{ fontSize: 16, fontWeight: 600, color: "#e8e8f0" }}>{value}</div>
+                      <div key={label} style={{ background: "var(--card)", borderRadius: 8, padding: "10px 6px", textAlign: "center" }}>
+                        <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 4 }}>{label}</div>
+                        <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text)" }}>{value}</div>
                       </div>
                     ))}
                   </div>
                 </div>
 
                 {/* 육친 분석 */}
-                <div style={{ background: "#111118", borderRadius: 12, padding: 16, marginBottom: 12 }}>
+                <div style={{ background: "var(--bg2)", borderRadius: 12, padding: 16, marginBottom: 12 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
                     <div style={{ background: "#6c63ff", color: "white", borderRadius: 6, padding: "4px 12px", fontSize: 13, fontWeight: 700 }}>
                       {result.analysis.tenGod}
                     </div>
-                    <div style={{ fontSize: 14, color: "#a0a0c0" }}>{result.analysis.energy}</div>
+                    <div style={{ fontSize: 14, color: "var(--muted)" }}>{result.analysis.energy}</div>
                   </div>
 
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    <div style={{ background: "#15151f", borderRadius: 8, padding: "12px 14px" }}>
+                    <div style={{ background: "var(--card)", borderRadius: 8, padding: "12px 14px" }}>
                       <div style={{ fontSize: 11, color: "#00d4aa", marginBottom: 6 }}>✦ 좋은 흐름</div>
-                      <div style={{ fontSize: 14, color: "#e8e8f0", lineHeight: 1.7 }}>{result.analysis.advice}</div>
+                      <div style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>{result.analysis.advice}</div>
                     </div>
-                    <div style={{ background: "#15151f", borderRadius: 8, padding: "12px 14px" }}>
+                    <div style={{ background: "var(--card)", borderRadius: 8, padding: "12px 14px" }}>
                       <div style={{ fontSize: 11, color: "#f59e0b", marginBottom: 6 }}>⚠ 주의사항</div>
-                      <div style={{ fontSize: 14, color: "#e8e8f0", lineHeight: 1.7 }}>{result.analysis.caution}</div>
+                      <div style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>{result.analysis.caution}</div>
                     </div>
-                    <div style={{ background: "#15151f", borderRadius: 8, padding: "12px 14px" }}>
+                    <div style={{ background: "var(--card)", borderRadius: 8, padding: "12px 14px" }}>
                       <div style={{ fontSize: 11, color: "#a78bfa", marginBottom: 6 }}>🏃 외부활동</div>
-                      <div style={{ fontSize: 14, color: "#e8e8f0", lineHeight: 1.7 }}>{result.analysis.activity}</div>
+                      <div style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>{result.analysis.activity}</div>
                     </div>
                   </div>
                 </div>
 
                 {/* 추천 색상 */}
-                <div style={{ background: "#111118", borderRadius: 12, padding: 16, marginBottom: 12 }}>
+                <div style={{ background: "var(--bg2)", borderRadius: 12, padding: 16, marginBottom: 12 }}>
                   <p style={{ fontSize: 11, color: "#6c63ff", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>// 오늘 추천 색상</p>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
                     {result.analysis.colors.map((c) => (
-                      <div key={c.name} style={{ background: "#15151f", borderRadius: 8, padding: "12px 8px", textAlign: "center" }}>
-                        <div style={{ width: 32, height: 32, borderRadius: "50%", background: c.hex, margin: "0 auto 8px", border: "1px solid rgba(255,255,255,0.1)" }} />
-                        <div style={{ fontSize: 12, fontWeight: 600, color: "#e8e8f0", marginBottom: 2 }}>{c.name}</div>
-                        <div style={{ fontSize: 11, color: "#7a7a9a" }}>{c.desc}</div>
+                      <div key={c.name} style={{ background: "var(--card)", borderRadius: 8, padding: "12px 8px", textAlign: "center", border: "1px solid var(--border)" }}>
+                        <div style={{ width: 32, height: 32, borderRadius: "50%", background: c.hex, margin: "0 auto 8px", border: "2px solid rgba(0,0,0,0.1)", boxShadow: "0 2px 6px rgba(0,0,0,0.15)" }} />
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", marginBottom: 2 }}>{c.name}</div>
+                        <div style={{ fontSize: 11, color: "var(--muted)" }}>{c.desc}</div>
                       </div>
                     ))}
                   </div>
                 </div>
 
                 {/* 길한 방향 */}
-                <div style={{ background: "#111118", borderRadius: 12, padding: 16 }}>
-                  <p style={{ fontSize: 11, color: "#6c63ff", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>// 길한 방향</p>
+                <div style={{ background: "var(--bg2)", borderRadius: 12, padding: 16 }}>
+                  <p style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>// 길한 방향</p>
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     <div style={{ fontSize: 28 }}>🧭</div>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: "#00d4aa" }}>{result.analysis.direction}</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: "var(--accent2)" }}>{result.analysis.direction}</div>
                   </div>
                 </div>
               </div>
