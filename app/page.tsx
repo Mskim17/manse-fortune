@@ -9,6 +9,7 @@ interface BirthInfo {
   hour: number;
   minute: number;
   name: string;
+  unknownHour: boolean;
 }
 
 interface FortuneResult {
@@ -185,11 +186,18 @@ export default function Home() {
   useEffect(() => setMounted(true), []);
 
   const [birth, setBirth] = useState<BirthInfo>({
-    year: 1982, month: 1, day: 17, hour: 11, minute: 25, name: ""
+    year: "" as any, month: "" as any, day: "" as any, hour: "" as any, minute: "" as any, name: "", unknownHour: false
   });
   const [targetDate, setTargetDate] = useState(() => {
     const today = new Date();
-    return today.toISOString().split("T")[0];
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const date = String(today.getDate()).padStart(2, '0');
+    const week = ['일', '월', '화', '수', '목', '금', '토'];
+    const dayOfWeek = week[today.getDay()];
+    console.log(`${year}-${month}-${date} (${dayOfWeek})`);
+    return `${year}-${month}-${date}`;
+    // return today.toISOString().split("T")[0];
   });
   const [result, setResult] = useState<FortuneResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -222,6 +230,7 @@ export default function Home() {
           birthMonth: birth.month,
           birthDay: birth.day,
           birthHour: birth.hour,
+          unknownHour: birth.unknownHour,
           targetDate,
         }),
       });
@@ -324,16 +333,49 @@ export default function Home() {
                 </div>
               </div>
 
+              {/* 시간 모름 체크박스 */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <input
+                  type="checkbox"
+                  id="unknownHour"
+                  checked={birth.unknownHour}
+                  onChange={(e) => setBirth({ ...birth, unknownHour: e.target.checked })}
+                  style={{ width: 16, height: 16, cursor: "pointer", accentColor: "#6c63ff" }}
+                />
+                <label htmlFor="unknownHour" style={{ fontSize: 13, color: "var(--muted)", cursor: "pointer" }}>
+                  태어난 시간을 모릅니다
+                </label>
+              </div>
+
+              {/* 시/분 입력 */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 20 }}>
                 <div>
-                  <label style={{ fontSize: 12, color: "var(--muted)", display: "block", marginBottom: 6 }}>시 (0~23)</label>
-                  <input type="number" min={0} max={23} value={birth.hour} onChange={(e) => setBirth({ ...birth, hour: Number(e.target.value) })}
-                    style={inputStyle} />
+                  <label style={{ fontSize: 12, color: birth.unknownHour ? "var(--border)" : "var(--muted)", display: "block", marginBottom: 6 }}>시 (0~23)</label>
+                  <input
+                    type="number" min={0} max={23}
+                    value={birth.hour}
+                    onChange={(e) => setBirth({ ...birth, hour: Number(e.target.value) })}
+                    disabled={birth.unknownHour}
+                    style={{
+                      ...inputStyle,
+                      opacity: birth.unknownHour ? 0.4 : 1,
+                      cursor: birth.unknownHour ? "not-allowed" : "text",
+                    }}
+                  />
                 </div>
                 <div>
-                  <label style={{ fontSize: 12, color: "var(--muted)", display: "block", marginBottom: 6 }}>분</label>
-                  <input type="number" min={0} max={59} value={birth.minute} onChange={(e) => setBirth({ ...birth, minute: Number(e.target.value) })}
-                    style={inputStyle} />
+                  <label style={{ fontSize: 12, color: birth.unknownHour ? "var(--border)" : "var(--muted)", display: "block", marginBottom: 6 }}>분</label>
+                  <input
+                    type="number" min={0} max={59}
+                    value={birth.minute}
+                    onChange={(e) => setBirth({ ...birth, minute: Number(e.target.value) })}
+                    disabled={birth.unknownHour}
+                    style={{
+                      ...inputStyle,
+                      opacity: birth.unknownHour ? 0.4 : 1,
+                      cursor: birth.unknownHour ? "not-allowed" : "text",
+                    }}
+                  />
                 </div>
               </div>
 
@@ -388,9 +430,9 @@ export default function Home() {
                   <p style={{ fontSize: 11, color: "#6c63ff", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>// 사주 원국</p>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
                     {[["시", result.saju.hour], ["일", result.saju.day], ["월", result.saju.month], ["년", result.saju.year]].map(([label, value]) => (
-                      <div key={label} style={{ background: "var(--card)", borderRadius: 8, padding: "10px 6px", textAlign: "center" }}>
+                      <div key={label} style={{ background: "var(--card2)", borderRadius: 8, padding: "10px 6px", textAlign: "center" }}>
                         <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 4 }}>{label}</div>
-                        <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text)" }}>{value}</div>
+                        <div style={{ fontSize: 16, fontWeight: 600, color: value === "-" ? "var(--muted)" : "var(--text)" }}>{value}</div>
                       </div>
                     ))}
                   </div>
