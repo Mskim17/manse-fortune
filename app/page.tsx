@@ -10,12 +10,16 @@ interface BirthInfo {
   minute: number;
   name: string;
   unknownHour: boolean;
+  isLunar: boolean;
 }
 
 interface FortuneResult {
   dayPillar: string;
   monthPillar: string;
   yearPillar: string;
+  unknownHour: boolean;
+  isLunar: boolean;
+  convertedSolar: { year: number; month: number; day: number } | null;
   saju: {
     year: string;
     month: string;
@@ -186,7 +190,8 @@ export default function Home() {
   useEffect(() => setMounted(true), []);
 
   const [birth, setBirth] = useState<BirthInfo>({
-    year: "" as any, month: "" as any, day: "" as any, hour: "" as any, minute: "" as any, name: "", unknownHour: false
+    year: "" as any, month: "" as any, day: "" as any, hour: "" as any, minute: "" as any, 
+    name: "", unknownHour: false, isLunar: false
   });
   const [targetDate, setTargetDate] = useState(() => {
     const today = new Date();
@@ -223,18 +228,26 @@ export default function Home() {
     setResult(null);
     try {
       const res = await fetch("/api/saju", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          birthYear: birth.year,
-          birthMonth: birth.month,
-          birthDay: birth.day,
-          birthHour: birth.hour,
-          unknownHour: birth.unknownHour,
-          targetDate,
-        }),
-      });
-      const data = await res.json();
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        birthYear: birth.year,
+        birthMonth: birth.month,
+        birthDay: birth.day,
+        birthHour: birth.hour,
+        unknownHour: birth.unknownHour,
+        isLunar: birth.isLunar,
+        targetDate,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.error || "분석 중 오류가 발생했어요.");
+      setLoading(false);
+      return;
+    }
 
       // 일간 추출 (일주 첫 글자)
       const dayGan = data.saju.day[0];
@@ -317,7 +330,25 @@ export default function Home() {
               <label style={{ fontSize: 12, color: "var(--muted)", display: "block", marginBottom: 6 }}>이름 (선택)</label>
               <input value={birth.name} onChange={(e) => setBirth({ ...birth, name: e.target.value })}
                 placeholder="이름 입력" style={{ ...inputStyle, marginBottom: 14 }} />
-
+              {/* 양력/음력 선택 */}
+              <div style={{ display: "flex", gap: 4, marginBottom: 16, background: "var(--bg)", borderRadius: 8, padding: 4 }}>
+                {[["solar", "양력"], ["lunar", "음력"]].map(([val, label]) => (
+                  <button
+                    key={val}
+                    onClick={() => setBirth({ ...birth, isLunar: val === "lunar" })}
+                    style={{
+                      flex: 1, padding: "8px", borderRadius: 6, border: "none",
+                      cursor: "pointer", fontSize: 14, fontWeight: 600,
+                      fontFamily: "inherit",
+                      background: (val === "lunar") === birth.isLunar ? "var(--accent)" : "transparent",
+                      color: (val === "lunar") === birth.isLunar ? "white" : "var(--muted)",
+                      transition: "all 0.2s",
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 14 }}>
                 <div>
                   <label style={{ fontSize: 12, color: "var(--muted)", display: "block", marginBottom: 6 }}>년</label>
@@ -428,7 +459,11 @@ export default function Home() {
                       </div>
                     ))}
                   </div>
-
+                  {result.isLunar && result.convertedSolar && (
+                    <div style={{ fontSize: 12, color: "var(--accent2)", marginBottom: 10 }}>
+                      음력 → 양력 변환: {result.convertedSolar.year}년 {result.convertedSolar.month}월 {result.convertedSolar.day}일
+                    </div>
+                  )}
                   {/* 사주 원국 */}
                   <p style={{ fontSize: 11, color: "#6c63ff", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>// 사주 원국</p>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
