@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
       year: saju.yearPillar,
       month: saju.monthPillar,
       day: saju.dayPillar,
-      hour: unknownHour ? "미상" : saju.hourPillar,
+      hour: unknownHour ? "-" : saju.hourPillar,
     }
   });
 }
