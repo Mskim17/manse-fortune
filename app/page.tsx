@@ -271,6 +271,9 @@ export default function Home() {
     fontSize: 15,
     width: "100%",
     fontFamily: "inherit",
+    WebkitAppearance: "none" as const,  // 추가
+    appearance: "none" as const,         // 추가
+    boxSizing: "border-box" as const,    // 추가
   };
 
   return (
@@ -308,7 +311,7 @@ export default function Home() {
         {/* 내 정보 탭 */}
         {activeTab === "birth" && (
           <div>
-            <div style={{ background: "var(--bg2)", borderRadius: 12, padding: 20, marginBottom: 16 }}>
+            <div style={{ background: "var(--bg2)", borderRadius: 12, padding: 20, marginBottom: 16, overflow: "hidden" }}>
               <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16 }}>생년월일시를 입력하면 자동으로 사주를 계산해요.</p>
 
               <label style={{ fontSize: 12, color: "var(--muted)", display: "block", marginBottom: 6 }}>이름 (선택)</label>
