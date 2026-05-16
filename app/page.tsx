@@ -349,6 +349,26 @@ export default function Home() {
                   </button>
                 ))}
               </div>
+              {birth.isLunar && (
+                  <div style={{
+                    background: "rgba(108,99,255,0.1)",
+                    border: "1px solid rgba(108,99,255,0.3)",
+                    borderRadius: 8,
+                    padding: "10px 14px",
+                    fontSize: 13,
+                    color: "var(--accent)",
+                    marginBottom: 14,
+                    lineHeight: 1.6,
+                  }}>
+                    💡 음력 변환이 안 될 경우<br/>
+                    <a href="https://search.naver.com/search.naver?query=음양력변환" 
+                      target="_blank"
+                      style={{ color: "var(--accent2)" }}>
+                      네이버 음양력변환 →
+                    </a>
+                    에서 양력으로 변환 후 양력으로 입력해주세요.
+                  </div>
+                )}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 14 }}>
                 <div>
                   <label style={{ fontSize: 12, color: "var(--muted)", display: "block", marginBottom: 6 }}>년</label>

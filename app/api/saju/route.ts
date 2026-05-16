@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { solarToLunar, lunarToSolar, calculateSaju } from "@fullstackfamily/manseryeok";
+import { getSupportedRange } from "@fullstackfamily/manseryeok";
+console.log(getSupportedRange());
 
 export async function POST(req: NextRequest) {
   const { birthYear, birthMonth, birthDay, birthHour, unknownHour, isLunar, targetDate } = await req.json();
@@ -22,14 +24,24 @@ export async function POST(req: NextRequest) {
   let solarMonth = month;
   let solarDay = day;
 
+  // lunarToSolar 호출 전에 윤달 여부도 시도해보기
   if (isLunar) {
     try {
-      const converted = lunarToSolar(year, month, day, false);
-      solarYear = converted.solar.year;   // .solar 추가
-      solarMonth = converted.solar.month; // .solar 추가
-      solarDay = converted.solar.day;     // .solar 추가
+      let converted;
+      try {
+        // 평달로 먼저 시도
+        converted = lunarToSolar(year, month, day, false);
+      } catch {
+        // 실패하면 윤달로 시도
+        converted = lunarToSolar(year, month, day, true);
+      }
+      solarYear = converted.solar.year;
+      solarMonth = converted.solar.month;
+      solarDay = converted.solar.day;
     } catch (e) {
-      return NextResponse.json({ error: "음력 변환 실패. 날짜를 확인해주세요." }, { status: 400 });
+      return NextResponse.json({ 
+        error: "이 날짜는 음력 변환이 어려워요. 네이버 '음양력변환'에서 양력으로 변환 후 양력으로 입력해주세요." 
+      }, { status: 400 });
     }
   }
 
