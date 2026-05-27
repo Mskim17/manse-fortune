@@ -20,22 +20,345 @@ interface FortuneResult {
   unknownHour: boolean;
   isLunar: boolean;
   convertedSolar: { year: number; month: number; day: number } | null;
-  saju: {
-    year: string;
-    month: string;
-    day: string;
-    hour: string;
-  };
+  saju: { year: string; month: string; day: string; hour: string };
   analysis: {
     tenGod: string;
+    jijiRelation: { type: string; desc: string } | null;
     energy: string;
     colors: { name: string; hex: string; desc: string }[];
     direction: string;
     advice: string;
     caution: string;
     activity: string;
+    elementScore: {
+      scores: { 목: number; 화: number; 토: number; 금: number; 수: number };
+      total: number;
+      dominant: string | null;
+      tripleChar: string | null;
+      percentage: Record<string, number>;
+    };
+    dominantText: string | null;
+    tripleText: string | null;
+    johu: {
+      status: "극열" | "극한" | "normal";
+      label: string;
+      yongsin: string;
+      solution: string[];
+    };
   };
 }
+
+// 천간/지지 → 오행 매핑
+const ganToElement: Record<string, string> = {
+  "갑": "목", "을": "목",
+  "병": "화", "정": "화",
+  "무": "토", "기": "토",
+  "경": "금", "신": "금",
+  "임": "수", "계": "수",
+};
+
+const jiToElement: Record<string, string> = {
+  "자": "수", "축": "토",
+  "인": "목", "묘": "목",
+  "진": "토", "사": "화",
+  "오": "화", "미": "토",
+  "신": "금", "유": "금",
+  "술": "토", "해": "수",
+};
+
+const dominantWarning: Record<string, string> = {
+  목: "🌳 목(木) 과다 — 고집과 완고함이 강해져 타인과 마찰이 생기기 쉬워요. 유연함을 의식적으로 유지하고, 금(金) 기운의 흰색·회색 의상으로 균형을 잡으세요.",
+  화: "🔥 화(火) 과다 — 조급증과 체력 방전이 올 수 있어요. 충동적 결정을 삼가고 충분한 수분 보충과 휴식이 필요해요. 수(水) 기운의 검은색·네이비 의상을 추천해요.",
+  토: "🌍 토(土) 과다 — 과도한 걱정과 소화 계통 문제가 생길 수 있어요. 생각을 단순화하고 목(木) 기운의 초록색으로 토를 극해 균형을 잡으세요.",
+  금: "⚙️ 금(金) 과다 — 지나친 완벽주의와 냉정함으로 인간관계가 경직될 수 있어요. 화(火) 기운의 붉은색으로 금을 녹여 유연함을 더하세요.",
+  수: "💧 수(水) 과다 — 실행력 저하와 우유부단함이 나타날 수 있어요. 생각만 하고 행동이 없는 날이에요. 토(土) 기운의 노란색·베이지로 수를 억제하고 실행에 집중하세요.",
+};
+
+interface ElementScore {
+  목: number; 화: number; 토: number; 금: number; 수: number;
+}
+
+interface JohuResult {
+  status: "극열" | "극한" | "normal";
+  label: string;
+  yongsin: string;
+  solution: string[];
+}
+
+const getJohu = (
+  monthPillar: string,
+  dayPillar: string,
+  scores: ElementScore,
+  total: number,
+): JohuResult => {
+  const monthJi = monthPillar[1] || "";
+  const dayJi = dayPillar[1] || "";
+
+  // 여름 월지 (사/오/미)
+  const summerJi = ["사", "오", "미"];
+  // 겨울 월지 (해/자/축)
+  const winterJi = ["해", "자", "축"];
+
+  const fireRatio = scores.화 / total;
+  const waterRatio = scores.수 / total;
+
+  if (summerJi.includes(monthJi) && fireRatio >= 0.35) {
+    return {
+      status: "극열",
+      label: "極熱 (극열) 🔥",
+      yongsin: "수(水)",
+      solution: [
+        "검은색·네이비·딥블루 의상 착용",
+        "수분 충분히 보충 (물·음료 자주)",
+        "직사광선 피하고 서늘한 환경 유지",
+        "격한 활동보다 차분한 실내 활동 권장",
+      ],
+    };
+  }
+
+  if (winterJi.includes(monthJi) && waterRatio >= 0.35) {
+    return {
+      status: "극한",
+      label: "極寒 (극한) ❄️",
+      yongsin: "화(火)",
+      solution: [
+        "붉은색·오렌지·버건디 의상 착용",
+        "따뜻한 음식·음료 섭취",
+        "활발한 움직임으로 체온 유지",
+        "햇볕 쬐기, 밝고 따뜻한 공간 활용",
+      ],
+    };
+  }
+
+  return {
+    status: "normal",
+    label: "균형",
+    yongsin: "",
+    solution: [],
+  };
+};
+
+const calcElementScore = (
+  saju: { year: string; month: string; day: string; hour: string },
+  dayPillar: string,
+  monthPillar: string,
+): {
+  scores: ElementScore;
+  total: number;
+  dominant: string | null;
+  tripleChar: string | null;
+  percentage: Record<string, number>;
+} => {
+  const scores: ElementScore = { 목: 0, 화: 0, 토: 0, 금: 0, 수: 0 };
+
+  // 월지 추출 (가중치 적용 대상)
+  const monthJi = monthPillar[1] || "";
+  const monthJiElement = jiToElement[monthJi] || "";
+
+  // 사주 원국 + 일진 전체 글자 수집
+  const allPillars = [saju.year, saju.month, saju.day, saju.hour, dayPillar];
+  const allChars: string[] = [];
+
+  allPillars.forEach((pillar) => {
+    if (!pillar || pillar === "미상") return;
+    const gan = pillar[0];
+    const ji = pillar[1];
+    if (gan) allChars.push(gan);
+    if (ji) allChars.push(ji);
+  });
+
+  // 점수 계산
+  allChars.forEach((char) => {
+    const el = ganToElement[char] || jiToElement[char];
+    if (!el) return;
+
+    // 월지 해당 오행이면 3배
+    const isMonthJiChar = jiToElement[char] === monthJiElement && jiToElement[char];
+    const point = isMonthJiChar ? 30 : 10;
+    scores[el as keyof ElementScore] += point;
+  });
+
+  const total = Object.values(scores).reduce((a, b) => a + b, 0);
+
+  // 퍼센트 계산
+  const percentage: Record<string, number> = {};
+  Object.entries(scores).forEach(([k, v]) => {
+    percentage[k] = Math.round((v / total) * 100);
+  });
+
+  // 과다 오행 (45% 이상)
+  const dominant = Object.entries(percentage).find(([, v]) => v >= 45)?.[0] || null;
+
+  // 삼중첩 감지 (지지 기준)
+  const jiChars = allPillars
+    .filter((p) => p && p !== "미상")
+    .map((p) => p[1])
+    .filter(Boolean);
+
+  const jiCount: Record<string, number> = {};
+  jiChars.forEach((j) => { jiCount[j] = (jiCount[j] || 0) + 1; });
+  const tripleChar = Object.entries(jiCount).find(([, v]) => v >= 3)?.[0] || null;
+
+  return { scores, total, dominant, tripleChar, percentage };
+};
+// 지지 합충형 분석
+const getJijiRelation = (dayJi: string, targetJi: string): { type: string; desc: string } | null => {
+  
+  // 천간/지지 → 오행 매핑
+  const ganToElement: Record<string, string> = {
+    "갑": "목", "을": "목",
+    "병": "화", "정": "화",
+    "무": "토", "기": "토",
+    "경": "금", "신": "금",
+    "임": "수", "계": "수",
+  };
+
+  const jiToElement: Record<string, string> = {
+    "자": "수", "축": "토",
+    "인": "목", "묘": "목",
+    "진": "토", "사": "화",
+    "오": "화", "미": "토",
+    "신": "금", "유": "금",
+    "술": "토", "해": "수",
+  };
+
+  interface ElementScore {
+    목: number; 화: number; 토: number; 금: number; 수: number;
+  }
+
+  const calcElementScore = (
+    saju: { year: string; month: string; day: string; hour: string },
+    dayPillar: string,
+    monthPillar: string,
+  ): {
+    scores: ElementScore;
+    total: number;
+    dominant: string | null;
+    tripleChar: string | null;
+    percentage: Record<string, number>;
+  } => {
+    const scores: ElementScore = { 목: 0, 화: 0, 토: 0, 금: 0, 수: 0 };
+
+    // 월지 추출 (가중치 적용 대상)
+    const monthJi = monthPillar[1] || "";
+    const monthJiElement = jiToElement[monthJi] || "";
+
+    // 사주 원국 + 일진 전체 글자 수집
+    const allPillars = [saju.year, saju.month, saju.day, saju.hour, dayPillar];
+    const allChars: string[] = [];
+
+    allPillars.forEach((pillar) => {
+      if (!pillar || pillar === "미상") return;
+      const gan = pillar[0];
+      const ji = pillar[1];
+      if (gan) allChars.push(gan);
+      if (ji) allChars.push(ji);
+    });
+
+    // 점수 계산
+    allChars.forEach((char) => {
+      const el = ganToElement[char] || jiToElement[char];
+      if (!el) return;
+
+      // 월지 해당 오행이면 3배
+      const isMonthJiChar = jiToElement[char] === monthJiElement && jiToElement[char];
+      const point = isMonthJiChar ? 30 : 10;
+      scores[el as keyof ElementScore] += point;
+    });
+
+    const total = Object.values(scores).reduce((a, b) => a + b, 0);
+
+    // 퍼센트 계산
+    const percentage: Record<string, number> = {};
+    Object.entries(scores).forEach(([k, v]) => {
+      percentage[k] = Math.round((v / total) * 100);
+    });
+
+    // 과다 오행 (45% 이상)
+    const dominant = Object.entries(percentage).find(([, v]) => v >= 45)?.[0] || null;
+
+    // 삼중첩 감지 (지지 기준)
+    const jiChars = allPillars
+      .filter((p) => p && p !== "미상")
+      .map((p) => p[1])
+      .filter(Boolean);
+
+    const jiCount: Record<string, number> = {};
+    jiChars.forEach((j) => { jiCount[j] = (jiCount[j] || 0) + 1; });
+    const tripleChar = Object.entries(jiCount).find(([, v]) => v >= 3)?.[0] || null;
+
+    return { scores, total, dominant, tripleChar, percentage };
+  };
+  
+  // 육합 (六合)
+  const liuHe: Record<string, string> = {
+    "자": "축", "축": "자",
+    "인": "해", "해": "인",
+    "묘": "술", "술": "묘",
+    "진": "유", "유": "진",
+    "사": "신", "신": "사",
+    "오": "미", "미": "오",
+  };
+
+  // 충 (沖) - 정반대
+  const chong: Record<string, string> = {
+    "자": "오", "오": "자",
+    "축": "미", "미": "축",
+    "인": "신", "신": "인",
+    "묘": "유", "유": "묘",
+    "진": "술", "술": "진",
+    "사": "해", "해": "사",
+  };
+
+  // 삼합 (三合)
+  const sanHe: Record<string, string[]> = {
+    "신": ["자", "진"],
+    "자": ["신", "진"],
+    "진": ["신", "자"],
+    "인": ["오", "술"],
+    "오": ["인", "술"],
+    "술": ["인", "오"],
+    "해": ["묘", "미"],
+    "묘": ["해", "미"],
+    "미": ["해", "묘"],
+    "사": ["유", "축"],
+    "유": ["사", "축"],
+    "축": ["사", "유"],
+  };
+
+  // 형 (刑)
+  const xing: Record<string, string> = {
+    "인": "사", "사": "신", "신": "인",  // 인사신 삼형
+    "축": "술", "술": "미", "미": "축",  // 축술미 삼형
+    "자": "묘", "묘": "자",              // 자묘 상형
+  };
+
+  if (liuHe[dayJi] === targetJi) {
+    return { type: "육합 ✨", desc: "지지가 합을 이뤄 조화롭고 안정적인 에너지예요." };
+  }
+  if (chong[dayJi] === targetJi) {
+    return { type: "충 ⚡", desc: "지지가 충돌해 변화와 긴장이 생기는 날이에요. 무리한 결정은 피하세요." };
+  }
+  if (sanHe[dayJi]?.includes(targetJi)) {
+    return { type: "삼합 🌟", desc: "지지가 삼합을 이뤄 강한 시너지 에너지예요." };
+  }
+  if (xing[dayJi] === targetJi) {
+    return { type: "형 ⚠️", desc: "지지가 형을 이뤄 갈등과 마찰이 생길 수 있어요. 인간관계에 주의하세요." };
+  }
+  return null;
+};
+
+// 한글 지지 매핑
+const jiziKorean: Record<string, string> = {
+  "자": "자", "축": "축", "인": "인", "묘": "묘",
+  "진": "진", "사": "사", "오": "오", "미": "미",
+  "신": "신", "유": "유", "술": "술", "해": "해",
+};
+
+const pillarToJi = (pillar: string): string => {
+  // 일주에서 지지 추출 (두 번째 글자)
+  return pillar[1] || "";
+};
 
 // 천간 오행
 const ganElement: Record<string, string> = {
@@ -248,26 +571,47 @@ export default function Home() {
       setLoading(false);
       return;
     }
+    const dayGan = data.saju.day[0];
+    const dayJi = pillarToJi(data.saju.day);
+    const dayPillarGan = data.dayPillar[0];
+    const dayPillarJi = pillarToJi(data.dayPillar);
 
-      // 일간 추출 (일주 첫 글자)
-      const dayGan = data.saju.day[0];
-      const dayPillarGan = data.dayPillar[0];
-      const tenGod = getTenGod(dayGan, dayPillarGan);
-      const desc = tenGodDesc[tenGod] || tenGodDesc["비견"];
-      const colorInfo = getColors(data.dayPillar);
-      
-      setResult({
-        ...data,
-        analysis: {
-          tenGod,
-          energy: desc.energy,
-          colors: colorInfo.colors,
-          direction: colorInfo.direction,
-          advice: desc.advice,
-          caution: desc.caution,
-          activity: desc.activity,
-        },
-      });
+    const tenGod = getTenGod(dayGan, dayPillarGan);
+    const jijiRelation = getJijiRelation(dayJi, dayPillarJi);
+    const desc = tenGodDesc[tenGod] || tenGodDesc["비견"];
+    const colorInfo = getColors(data.dayPillar);
+
+    // 오행 점수 계산
+    const elementResult = calcElementScore(data.saju, data.dayPillar, data.monthPillar);
+
+    // 조후 판단
+    const johu = getJohu(data.monthPillar, data.dayPillar, elementResult.scores, elementResult.total);
+
+    // 다자 경고 텍스트
+    const dominantText = elementResult.dominant
+      ? dominantWarning[elementResult.dominant] || null
+      : null;
+    const tripleText = elementResult.tripleChar
+      ? `⚠️ 지지 삼중첩(${elementResult.tripleChar}${elementResult.tripleChar}${elementResult.tripleChar}) 감지 — 해당 오행이 극도로 강해져 편중된 에너지가 작용해요. 오늘은 특히 균형에 주의하세요.`
+      : null;
+
+    setResult({
+      ...data,
+      analysis: {
+        tenGod,
+        jijiRelation,
+        energy: desc.energy,
+        colors: colorInfo.colors,
+        direction: colorInfo.direction,
+        advice: desc.advice,
+        caution: desc.caution,
+        activity: desc.activity,
+        elementScore: elementResult,
+        dominantText,
+        tripleText,
+        johu,
+      },
+    });
     } catch {
       alert("분석 중 오류가 발생했어요.");
     } finally {
@@ -495,6 +839,79 @@ export default function Home() {
                     ))}
                   </div>
                 </div>
+                
+                {/* 오행 점수 바 차트 */}
+                <div style={{ background: "var(--bg2)", borderRadius: 12, padding: 16, marginBottom: 12 }}>
+                  <p style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>// 오행 점수</p>
+                  {Object.entries(result.analysis.elementScore.scores).map(([el, score]) => {
+                    const pct = result.analysis.elementScore.percentage[el];
+                    const elColor: Record<string, string> = {
+                      목: "#3B6D11", 화: "#D85A30", 토: "#BA7517", 금: "#888780", 수: "#185FA5"
+                    };
+                    const isDominant = result.analysis.elementScore.dominant === el;
+                    return (
+                      <div key={el} style={{ marginBottom: 8 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
+                          <span style={{ color: isDominant ? elColor[el] : "var(--text)", fontWeight: isDominant ? 700 : 400 }}>
+                            {el} {isDominant ? "⚠️ 과다" : ""}
+                          </span>
+                          <span style={{ color: "var(--muted)" }}>{score}점 ({pct}%)</span>
+                        </div>
+                        <div style={{ height: 6, background: "var(--card)", borderRadius: 3, overflow: "hidden" }}>
+                          <div style={{ height: "100%", width: `${pct}%`, background: elColor[el], borderRadius: 3, transition: "width 0.5s" }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* 다자 경고 */}
+                {(result.analysis.dominantText || result.analysis.tripleText) && (
+                  <div style={{ background: "rgba(255,107,107,0.1)", border: "1px solid rgba(255,107,107,0.3)", borderRadius: 12, padding: 16, marginBottom: 12 }}>
+                    <p style={{ fontSize: 11, color: "#ff6b6b", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 10 }}>// 오행 과다 경고</p>
+                    {result.analysis.dominantText && (
+                      <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7, marginBottom: result.analysis.tripleText ? 8 : 0 }}>
+                        {result.analysis.dominantText}
+                      </p>
+                    )}
+                    {result.analysis.tripleText && (
+                      <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>
+                        {result.analysis.tripleText}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* 조후 판단 */}
+                {result.analysis.johu.status !== "normal" && (
+                  <div style={{ background: result.analysis.johu.status === "극열" ? "rgba(216,90,48,0.1)" : "rgba(24,95,165,0.1)", border: `1px solid ${result.analysis.johu.status === "극열" ? "rgba(216,90,48,0.3)" : "rgba(24,95,165,0.3)"}`, borderRadius: 12, padding: 16, marginBottom: 12 }}>
+                    <p style={{ fontSize: 11, color: result.analysis.johu.status === "극열" ? "#D85A30" : "#185FA5", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 10 }}>
+                      // 조후 판단 — {result.analysis.johu.label}
+                    </p>
+                    <p style={{ fontSize: 14, color: "var(--text)", marginBottom: 10 }}>
+                      용신: <strong style={{ fontWeight: 700 }}>{result.analysis.johu.yongsin}</strong> — 오늘은 {result.analysis.johu.yongsin} 기운으로 균형을 잡아야 해요.
+                    </p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {result.analysis.johu.solution.map((s, i) => (
+                        <div key={i} style={{ fontSize: 13, color: "var(--muted)", display: "flex", gap: 8 }}>
+                          <span>•</span><span>{s}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 지지 합충형 추가 */}
+                {result.analysis.jijiRelation && (
+                  <div style={{ background: "var(--card)", borderRadius: 8, padding: "10px 14px", marginBottom: 10 }}>
+                    <div style={{ fontSize: 12, color: "var(--accent2)", marginBottom: 4 }}>
+                      지지 관계 — {result.analysis.jijiRelation.type}
+                    </div>
+                    <div style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>
+                      {result.analysis.jijiRelation.desc}
+                    </div>
+                  </div>
+                )}
 
                 {/* 육친 분석 */}
                 <div style={{ background: "var(--bg2)", borderRadius: 12, padding: 16, marginBottom: 12 }}>
