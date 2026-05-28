@@ -79,7 +79,7 @@ interface ElementScore {
 }
 
 interface JohuResult {
-  status: "극열" | "극한" | "평이";
+  status: "극열" | "극한" | "평이"  | "풍습"  | "조조"  | "토중" ;
   label: string;
   yongsin: string;
   solution: string[];
@@ -98,9 +98,15 @@ const getJohu = (
   const summerJi = ["사", "오", "미"];
   // 겨울 월지 (해/자/축)
   const winterJi = ["해", "자", "축"];
+  const springJi = ['寅', '卯']; // 봄 (입춘~청명/망종 전)
+  const autumnJi = ['申', '酉']; // 가을 (입추~백로/한로 전)
+  const changeJi = ['辰', '未', '戌', '丑']; // 환절기 (각 계절의 끝자락 토 기운)
 
   const fireRatio = scores.화 / total;
   const waterRatio = scores.수 / total;
+  const woodRatio = scores.목 / total;   // 목(木) 기운의 비율 (0.0 ~ 1.0)
+  const earthRatio = scores.토 / total;  // 토(土) 기운의 비율 (0.0 ~ 1.0)
+  const goldRatio = scores.금 / total;   // 금(金) 기운의 비율 (0.0 ~ 1.0)
 
   if (summerJi.includes(monthJi) && fireRatio >= 0.35) {
     return {
@@ -126,6 +132,48 @@ const getJohu = (
         "따뜻한 음식·음료 섭취",
         "활발한 움직임으로 체온 유지",
         "햇볕 쬐기, 밝고 따뜻한 공간 활용",
+      ],
+    };
+  }
+
+  // 3. 봄 조후 판단: 봄이면서 목 기운이 강할 때 -> 습목(濕木) 기운 제어
+  if (springJi.includes(monthJi) && woodRatio >= 0.35) {
+    return {
+      status: "풍습",
+      label: "風濕 (풍습) 🌿",
+      yongsin: "금(金) 또는 화(火)",
+      solution: [
+        "흰색·회색(金) 의상으로 과도한 목 기운을 제어하세요.",
+        "생각이 너무 뻗어나가 행동이 굼떠질 수 있으니 과감한 실행력이 필요합니다.",
+        "몸이 무겁거나 습해지기 쉬우니 가벼운 스트레칭을 자주 해주세요.",
+      ],
+    };
+  }
+
+  // 4. 가을 조후 판단: 가을이면서 금 기운이 강할 때 -> 숙살(肅殺) 건조함 제어
+  if (autumnJi.includes(monthJi) && goldRatio >= 0.35) {
+    return {
+      status: "조조",
+      label: "燥熱 (조조) 🍂",
+      yongsin: "화(火) 또는 수(水)",
+      solution: [
+        "붉은색·오렌지색(火) 의상으로 경직된 기운을 부드럽게 녹이세요.",
+        "기운이 건조하고 냉정해져 주변 사람에게 날카로운 말을 건네기 쉽습니다.",
+        "타인에 대한 포용력을 의식적으로 발휘하고, 호흡기 건강에 신경 쓰세요.",
+      ],
+    };
+  }
+
+  // 5. 환절기 조후 판단: 사계절의 교차점(진술축미)이면서 토 기운이 강할 때 -> 기운의 정체 제어
+  if (changeJi.includes(monthJi) && earthRatio >= 0.35) {
+    return {
+      status: "토중",
+      label: "土重 (토중) 🌍",
+      yongsin: "목(木) 또는 금(金)",
+      solution: [
+        "초록색·청색(木) 의상으로 정체된 기운을 뚫어주세요.",
+        "토 기운이 뭉치면 과도한 걱정과 생각의 감옥에 갇히거나 소화 불량이 생기기 쉽습니다.",
+        "묵은 일들을 정리하거나 불필요한 물건을 비우는 활동이 개운에 좋습니다.",
       ],
     };
   }
