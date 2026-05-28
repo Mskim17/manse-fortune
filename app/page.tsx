@@ -471,7 +471,7 @@ export default function Home() {
           <div>
             <h1 style={{ fontSize: 22, fontWeight: 700 }}>🌙 만세력 운세</h1>
             <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 2 }}>사주 기반 일일 운세 분석</p>
-            <p style={{ fontSize: 11, color: "var(--caution)", marginBottom: 20 }}>분석은 통계적 경향성일 뿐, 하루를 결정하는 것은 당신의 선택입니다.</p>
+            <p style={{ fontSize: 11, color: "var(--caution)", marginBottom: 20 }}>사주는 통계적 경향성일 뿐, 하루를 결정하는 것은 당신의 선택입니다.</p>
           </div>
           {mounted && (
             <button onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
