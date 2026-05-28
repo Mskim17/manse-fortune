@@ -17,6 +17,7 @@ body {
   --border: rgba(255,255,255,0.07);
   --text: #e8e8f0;
   --muted: #7a7a9a;
+  --caution: #f97316;
   --accent: #6c63ff;
   --accent2: #00d4aa;
   --input-bg: #15151f;
@@ -37,6 +38,7 @@ body {
   --border: rgba(0,0,0,0.08);
   --text: #1a1a2e;
   --muted: #6a6a8a;
+  --caution: #f97316;
   --accent: #6c63ff;
   --accent2: #00a886;
   --input-bg: #ffffff;
