@@ -79,7 +79,7 @@ interface ElementScore {
 }
 
 interface JohuResult {
-  status: "극열" | "극한" | "normal";
+  status: "극열" | "극한" | "평이";
   label: string;
   yongsin: string;
   solution: string[];
@@ -111,7 +111,7 @@ const getJohu = (
         "검은색·네이비·딥블루 의상 착용",
         "수분 충분히 보충 (물·음료 자주)",
         "직사광선 피하고 서늘한 환경 유지",
-        "격한 활동보다 차분한 실내 활동 권장",
+        "격한 활동보다 차분한 활동 권장",
       ],
     };
   }
@@ -131,10 +131,13 @@ const getJohu = (
   }
 
   return {
-    status: "normal",
+    status: "평이",
     label: "균형",
-    yongsin: "",
-    solution: [],
+    yongsin: "균형",
+    solution: [
+      "평소대로 균형 잡힌 하루를 보내세요.",
+      "조후가 안정적이니 원하시는 활동을 자유롭게 진행하셔도 좋습니다."
+    ],
   };
 };
 
@@ -883,7 +886,7 @@ export default function Home() {
                 )}
 
                 {/* 조후 판단 */}
-                {result.analysis.johu.status !== "normal" && (
+                {result.analysis.johu.status && (
                   <div style={{ background: result.analysis.johu.status === "극열" ? "rgba(216,90,48,0.1)" : "rgba(24,95,165,0.1)", border: `1px solid ${result.analysis.johu.status === "극열" ? "rgba(216,90,48,0.3)" : "rgba(24,95,165,0.3)"}`, borderRadius: 12, padding: 16, marginBottom: 12 }}>
                     <p style={{ fontSize: 11, color: result.analysis.johu.status === "극열" ? "#D85A30" : "#185FA5", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 10 }}>
                       // 조후 판단 — {result.analysis.johu.label}
