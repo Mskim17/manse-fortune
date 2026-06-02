@@ -183,6 +183,7 @@ const getJohu = (
   total: number,
 ) => {
   const monthJi = monthPillar[1] || "";
+
   const summerJi = ["사", "오", "미"];
   const winterJi = ["해", "자", "축"];
   const springJi = ["인", "묘"];
@@ -195,75 +196,79 @@ const getJohu = (
   const earthRatio = scores.토 / total;
   const goldRatio = scores.금 / total;
 
-  if (summerJi.includes(monthJi) && fireRatio >= 0.35) {
-    return {
-      status: "극열" as const,
-      label: "極熱 (극열) 🔥",
-      yongsin: "수(水)",
-      solution: [
-        "검은색·네이비·딥블루 의상 착용",
-        "수분 충분히 보충 (물·음료 자주)",
-        "직사광선 피하고 서늘한 환경 유지",
-        "격한 활동보다 차분한 활동 권장",
-      ],
-    };
+  // 계절 판단
+  const isSummer = summerJi.includes(monthJi);
+  const isWinter = winterJi.includes(monthJi);
+  const isSpring = springJi.includes(monthJi);
+  const isAutumn = autumnJi.includes(monthJi);
+  const isChange = changeJi.includes(monthJi);
+
+  // 과다 오행 판단
+  const isFireOver = fireRatio >= 0.35;
+  const isWaterOver = waterRatio >= 0.35;
+  const isWoodOver = woodRatio >= 0.35;
+  const isGoldOver = goldRatio >= 0.35;
+  const isEarthOver = earthRatio >= 0.35;
+
+  // 여름 + 화 과다 → 극열
+  if (isSummer && isFireOver) {
+    return { status: "극열" as const, label: "極熱 (극열) 🔥", yongsin: "수(Water)",
+      solution: ["검은색·네이비·딥블루 의상 착용", "수분 충분히 보충 (물·음료 자주)", "직사광선 피하고 서늘한 환경 유지", "격한 활동보다 차분한 활동 권장"] };
   }
-  if (winterJi.includes(monthJi) && waterRatio >= 0.35) {
-    return {
-      status: "극한" as const,
-      label: "極寒 (극한) ❄️",
-      yongsin: "화(火)",
-      solution: [
-        "붉은색·오렌지·버건디 의상 착용",
-        "따뜻한 음식·음료 섭취",
-        "활발한 움직임으로 체온 유지",
-        "햇볕 쬐기, 밝고 따뜻한 공간 활용",
-      ],
-    };
+
+  // 여름 + 금 과다 → 조열(건조한 여름에 금이 강해 더 메마름)
+  if (isSummer && isGoldOver) {
+    return { status: "조조" as const, label: "燥熱 (조열) 🌞", yongsin: "수(Water) 또는 화(Fire)",
+      solution: ["검은색·네이비 의상으로 건조함을 완화하세요.", "완벽주의가 강해지기 쉬운 날이에요. 유연함을 유지하세요.", "수분 보충과 함께 충분한 휴식을 챙기세요."] };
   }
-  if (springJi.includes(monthJi) && woodRatio >= 0.35) {
-    return {
-      status: "풍습" as const,
-      label: "風濕 (풍습) 🌿",
-      yongsin: "금(金)",
-      solution: [
-        "흰색·회색 의상으로 과도한 목 기운을 제어하세요.",
-        "생각이 너무 뻗어나가 행동이 굼떠질 수 있으니 과감한 실행력이 필요해요.",
-        "몸이 무겁거나 습해지기 쉬우니 가벼운 스트레칭을 자주 해주세요.",
-      ],
-    };
+
+  // 겨울 + 수 과다 → 극한
+  if (isWinter && isWaterOver) {
+    return { status: "극한" as const, label: "極寒 (극한) ❄️", yongsin: "화(Fire)",
+      solution: ["붉은색·오렌지·버건디 의상 착용", "따뜻한 음식·음료 섭취", "활발한 움직임으로 체온 유지", "햇볕 쬐기, 밝고 따뜻한 공간 활용"] };
   }
-  if (autumnJi.includes(monthJi) && goldRatio >= 0.35) {
-    return {
-      status: "조조" as const,
-      label: "燥熱 (조조) 🍂",
-      yongsin: "화(火)",
-      solution: [
-        "붉은색·오렌지색 의상으로 경직된 기운을 부드럽게 녹이세요.",
-        "기운이 건조하고 냉정해져 주변 사람에게 날카로운 말을 건네기 쉬워요.",
-        "타인에 대한 포용력을 의식적으로 발휘하고, 호흡기 건강에 신경 쓰세요.",
-      ],
-    };
+
+  // 겨울 + 금 과다 → 냉금(차가운 금 기운 극대화)
+  if (isWinter && isGoldOver) {
+    return { status: "조조" as const, label: "冷金 (냉금) 🌨️", yongsin: "화(Fire)",
+      solution: ["붉은색·주황색 의상으로 냉기를 녹이세요.", "차갑고 냉정해지기 쉬운 날이에요. 따뜻한 소통을 의식하세요.", "따뜻한 실내 활동을 권장해요."] };
   }
-  if (changeJi.includes(monthJi) && earthRatio >= 0.35) {
-    return {
-      status: "토중" as const,
-      label: "土重 (토중) 🌍",
-      yongsin: "목(木)",
-      solution: [
-        "초록색·청색 의상으로 정체된 기운을 뚫어주세요.",
-        "토 기운이 뭉치면 과도한 걱정과 소화 불량이 생기기 쉬워요.",
-        "묵은 일들을 정리하거나 불필요한 물건을 비우는 활동이 개운에 좋아요.",
-      ],
-    };
+
+  // 봄 + 목 과다 → 풍습
+  if (isSpring && isWoodOver) {
+    return { status: "풍습" as const, label: "風濕 (풍습) 🌿", yongsin: "금(金)",
+      solution: ["흰색·회색 의상으로 과도한 목 기운을 제어하세요.", "생각이 너무 뻗어나가 행동이 굼떠질 수 있어요.", "가벼운 스트레칭을 자주 해주세요."] };
   }
+
+  // 가을 + 금 과다 → 조조(가을 건조함)
+  if (isAutumn && isGoldOver) {
+    return { status: "조조" as const, label: "燥熱 (조조) 🍂", yongsin: "화(Fire)",
+      solution: ["붉은색·오렌지색 의상으로 경직된 기운을 부드럽게 녹이세요.", "날카로운 말을 건네기 쉬워요. 타인에 대한 포용력을 의식하세요.", "호흡기 건강에 신경 쓰세요."] };
+  }
+
+  // 환절기 + 토 과다 → 토중
+  if (isChange && isEarthOver) {
+    return { status: "토중" as const, label: "土重 (토중) 🌍", yongsin: "목(木)",
+      solution: ["초록색·청색 의상으로 정체된 기운을 뚫어주세요.", "과도한 걱정과 소화 불량이 생기기 쉬워요.", "묵은 일들을 정리하거나 불필요한 물건을 비우는 활동이 좋아요."] };
+  }
+
+  // 어떤 계절이든 특정 오행 과다 시 경고
+  if (isGoldOver) {
+    return { status: "조조" as const, label: "金多 (금다) ⚙️", yongsin: "화(Fire)",
+      solution: ["붉은색·오렌지색으로 경직된 금 기운을 녹이세요.", "완벽주의와 냉정함이 강해지는 날이에요.", "유연한 소통과 따뜻한 표현을 의식해보세요."] };
+  }
+  if (isWoodOver) {
+    return { status: "풍습" as const, label: "木多 (목다) 🌳", yongsin: "금(金)",
+      solution: ["흰색·회색으로 과도한 목 기운을 제어하세요.", "고집이 강해지기 쉬운 날이에요. 타인 의견을 경청해보세요.", "과감한 실행보다 충분한 검토 후 행동하세요."] };
+  }
+  if (isEarthOver) {
+    return { status: "토중" as const, label: "土多 (토다) 🌍", yongsin: "목(木)",
+      solution: ["초록색·청색으로 정체된 토 기운을 뚫어주세요.", "소화 불량과 과도한 걱정이 생기기 쉬워요.", "몸을 움직여 기운의 흐름을 원활하게 해주세요."] };
+  }
+
   return {
-    status: "평이" as const,
-    label: "균형 ☯️",
-    yongsin: "",
-    solution: [
-      "조후가 안정적이니 원하시는 활동을 자유롭게 진행하셔도 좋아요.",
-    ],
+    status: "평이" as const, label: "균형 ☯️", yongsin: "",
+    solution: ["조후가 안정적이니 원하시는 활동을 자유롭게 진행하셔도 좋아요."],
   };
 };
 
