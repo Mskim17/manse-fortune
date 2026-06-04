@@ -45,6 +45,11 @@ interface FortuneResult {
       yongsin: string;
       solution: string[];
     };
+    strength: {
+      strength: "신강" | "신약" | "중화";
+      score: number;
+      desc: string;
+    };
   };
 }
 
@@ -173,6 +178,89 @@ const calcElementScore = (
   const tripleChar = Object.entries(jiCount).find(([, v]) => v >= 3)?.[0] || null;
 
   return { scores, total, dominant, tripleChar, percentage };
+};
+
+// ── 신강/신약 판단 ──
+const calcStrength = (
+  saju: { year: string; month: string; day: string; hour: string },
+  dayPillar: string,
+  monthPillar: string,
+): {
+  strength: "신강" | "신약" | "중화";
+  score: number;
+  desc: string;
+} => {
+  const dayGan = dayPillar[0];
+  const dayEl = ganToElement[dayGan];
+
+  // 일간을 생해주는 오행 (인성)
+  const gen: Record<string, string> = {
+    목: "수", 화: "목", 토: "화", 금: "토", 수: "금",
+  };
+  // 일간과 같은 오행 (비겁)
+  const sameEl = dayEl;
+  // 인성 오행
+  const inEl = gen[dayEl];
+
+  const allPillars = [saju.year, saju.month, saju.day, saju.hour];
+  let supportScore = 0;
+  let weakenScore = 0;
+
+  // 월지 가중치
+  const monthJi = monthPillar[1] || "";
+  const monthJiEl = jiToElement[monthJi] || "";
+
+  allPillars.forEach((pillar) => {
+    if (!pillar || pillar === "미상") return;
+    const gan = pillar[0];
+    const ji = pillar[1];
+
+    [gan, ji].forEach((char) => {
+      if (!char) return;
+      const el = ganToElement[char] || jiToElement[char];
+      if (!el) return;
+
+      // 월지 해당 글자면 가중치 2배
+      const isMonthJiChar = jiToElement[char] === monthJiEl && !!jiToElement[char];
+      const point = isMonthJiChar ? 2 : 1;
+
+      if (el === sameEl || el === inEl) {
+        // 일간과 같은 오행(비겁) or 생해주는 오행(인성) → 강화
+        supportScore += point;
+      } else {
+        // 나머지 → 설기·극
+        weakenScore += point;
+      }
+    });
+  });
+
+  // 일주 자체는 제외 (일간은 본인이라 계산에서 빼야 함)
+  // 일지만 반영
+  const dayJiEl = jiToElement[dayPillar[1]] || "";
+  if (dayJiEl === sameEl || dayJiEl === inEl) {
+    supportScore += 1;
+  } else {
+    weakenScore += 1;
+  }
+
+  const total = supportScore + weakenScore;
+  const ratio = supportScore / total;
+
+  let strength: "신강" | "신약" | "중화";
+  let desc: string;
+
+  if (ratio >= 0.55) {
+    strength = "신강";
+    desc = "일간의 기운이 강해요. 오늘은 에너지가 넘치지만 지나치게 고집스러워질 수 있어요. 설기(식상·재성)로 에너지를 발산하는 활동이 좋아요.";
+  } else if (ratio <= 0.45) {
+    strength = "신약";
+    desc = "일간의 기운이 약해요. 오늘은 체력 소모에 주의하고 무리한 계획보다 내실 있는 하루를 보내세요. 인성·비겁 기운으로 충전이 필요해요.";
+  } else {
+    strength = "중화";
+    desc = "일간의 기운이 균형 잡혀 있어요. 오늘은 어떤 활동도 무난하게 소화할 수 있는 안정적인 날이에요.";
+  }
+
+  return { strength, score: Math.round(ratio * 100), desc };
 };
 
 // ── 조후 판단 ──
@@ -421,6 +509,7 @@ export default function Home() {
       const desc = tenGodDesc[tenGod] || tenGodDesc["비견"];
       const elementResult = calcElementScore(data.saju, data.dayPillar, data.monthPillar);
       const johu = getJohu(data.monthPillar, data.dayPillar, elementResult.scores, elementResult.total);
+      const strengthResult = calcStrength(data.saju, data.dayPillar, data.monthPillar);
 
       // 조후 용신이 있으면 용신 기준 색상·방향, 없으면 일진 기준
       const colorInfo = getColors(
@@ -447,6 +536,7 @@ export default function Home() {
           dominantText,
           tripleText,
           johu,
+          strength: strengthResult,
         },
       });
     } catch { alert("분석 중 오류가 발생했어요."); }
@@ -715,6 +805,62 @@ export default function Home() {
                       </div>
                     ))}
                   </div>
+                </div>
+                
+                {/* 신강/신약 */}
+                <div style={{ background: "var(--bg2)", borderRadius: 12, padding: 16, marginBottom: 12 }}>
+                  <p style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>// 신강·신약 판단</p>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+                    <div style={{
+                      padding: "6px 16px", borderRadius: 20, fontWeight: 700, fontSize: 15,
+                      background: result.analysis.strength.strength === "신강"
+                        ? "rgba(216,90,48,0.15)"
+                        : result.analysis.strength.strength === "신약"
+                        ? "rgba(24,95,165,0.15)"
+                        : "rgba(108,99,255,0.15)",
+                      color: result.analysis.strength.strength === "신강"
+                        ? "#D85A30"
+                        : result.analysis.strength.strength === "신약"
+                        ? "#185FA5"
+                        : "#6c63ff",
+                      border: `1px solid ${result.analysis.strength.strength === "신강"
+                        ? "rgba(216,90,48,0.3)"
+                        : result.analysis.strength.strength === "신약"
+                        ? "rgba(24,95,165,0.3)"
+                        : "rgba(108,99,255,0.3)"}`,
+                    }}>
+                      {result.analysis.strength.strength}
+                    </div>
+                    {/* 강약 게이지 */}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--muted)", marginBottom: 4 }}>
+                        <span>신약</span>
+                        <span>중화</span>
+                        <span>신강</span>
+                      </div>
+                      <div style={{ height: 8, background: "var(--card)", borderRadius: 4, overflow: "hidden", position: "relative" }}>
+                        <div style={{
+                          height: "100%",
+                          width: `${result.analysis.strength.score}%`,
+                          background: result.analysis.strength.strength === "신강"
+                            ? "linear-gradient(90deg, #6c63ff, #D85A30)"
+                            : result.analysis.strength.strength === "신약"
+                            ? "linear-gradient(90deg, #185FA5, #6c63ff)"
+                            : "linear-gradient(90deg, #6c63ff, #00d4aa)",
+                          borderRadius: 4,
+                          transition: "width 0.5s",
+                        }} />
+                        {/* 중화 기준선 */}
+                        <div style={{ position: "absolute", top: 0, left: "50%", width: 2, height: "100%", background: "rgba(255,255,255,0.3)" }} />
+                      </div>
+                      <div style={{ textAlign: "right", fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
+                        {result.analysis.strength.score}점
+                      </div>
+                    </div>
+                  </div>
+                  <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>
+                    {result.analysis.strength.desc}
+                  </p>
                 </div>
 
                 {/* 추천 색상 */}
