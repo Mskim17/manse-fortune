@@ -306,7 +306,7 @@ const getJohu = (
   }
 
   // 1. 상태(Status) 및 라벨(Label) 결정 로직 (계절 및 복합 조건 우선)
-  let status: "극열" | "조조" | "극한" | "냉금" | "풍습" | "토중" | "평이" = "평이";
+  let status: "극열" | "조조" | "극한" | "냉금" | "풍습" | "토중" | "균형";
   let label = "균형 ☯️";
   let yongsinEl = "토"; // 기본값 초기화
 
@@ -404,7 +404,7 @@ const getJohu = (
   if (isChange && topElement === "토") solution.unshift("환절기 토중 — 기운 정체가 가장 심한 시기예요");
 
   return {
-    status,
+    status: "균형",
     label,
     yongsin: yongsinName[yongsinEl],
     yongsinEl,
