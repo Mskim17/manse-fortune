@@ -113,15 +113,6 @@ const getColors = (dayPillar: string, johuYongsinEl?: string) => {
   };
 };
 
-// ── 다자 경고 ──
-const dominantWarning: Record<string, string> = {
-  목: "🌳 목(木) 과다 — 고집과 완고함이 강해져 타인과 마찰이 생기기 쉬워요. 유연함을 의식적으로 유지하고, 금(金) 기운의 흰색·회색 의상으로 균형을 잡으세요.",
-  화: "🔥 화(火) 과다 — 조급증과 체력 방전이 올 수 있어요. 충동적 결정을 삼가고 충분한 수분 보충과 휴식이 필요해요. 수(水) 기운의 검은색·네이비 의상을 추천해요.",
-  토: "🌍 토(土) 과다 — 과도한 걱정과 소화 계통 문제가 생길 수 있어요. 생각을 단순화하고 목(木) 기운의 초록색으로 토를 극해 균형을 잡으세요.",
-  금: "⚙️ 금(金) 과다 — 지나친 완벽주의와 냉정함으로 인간관계가 경직될 수 있어요. 화(火) 기운의 붉은색으로 금을 녹여 유연함을 더하세요.",
-  수: "💧 수(水) 과다 — 실행력 저하와 우유부단함이 나타날 수 있어요. 생각만 하고 행동이 없는 날이에요. 토(土) 기운의 노란색·베이지로 수를 억제하고 실행에 집중하세요.",
-};
-
 // ── 오행 점수 계산 ──
 interface ElementScore {
   목: number; 화: number; 토: number; 금: number; 수: number;
@@ -572,7 +563,6 @@ export default function Home() {
         johu.yongsinEl || undefined
       );
 
-      const dominantText = elementResult.dominant ? dominantWarning[elementResult.dominant] || null : null;
       const tripleText = elementResult.tripleChar
         ? `⚠️ 지지 삼중첩(${elementResult.tripleChar}${elementResult.tripleChar}${elementResult.tripleChar}) 감지 — 해당 오행이 극도로 강해져 편중된 에너지가 작용해요. 오늘은 특히 균형에 주의하세요.`
         : null;
@@ -588,7 +578,6 @@ export default function Home() {
           caution: desc.caution,
           activity: desc.activity,
           elementScore: elementResult,
-          dominantText,
           tripleText,
           johu,
           strength: strengthResult,
@@ -793,21 +782,6 @@ export default function Home() {
                     );
                   })}
                 </div>
-
-                {/* 다자 경고 */}
-                {(result.analysis.dominantText || result.analysis.tripleText) && (
-                  <div style={{ background: "rgba(255,107,107,0.1)", border: "1px solid rgba(255,107,107,0.3)", borderRadius: 12, padding: 16, marginBottom: 12 }}>
-                    <p style={{ fontSize: 11, color: "#ff6b6b", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 10 }}>// 오행 과다 경고</p>
-                    {result.analysis.dominantText && (
-                      <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7, marginBottom: result.analysis.tripleText ? 8 : 0 }}>
-                        {result.analysis.dominantText}
-                      </p>
-                    )}
-                    {result.analysis.tripleText && (
-                      <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>{result.analysis.tripleText}</p>
-                    )}
-                  </div>
-                )}
 
                 {/* 조후 판단 */}
                 <div style={{ background: johuBg[result.analysis.johu.status], border: `1px solid ${johuBorder[result.analysis.johu.status]}`, borderRadius: 12, padding: 16, marginBottom: 12 }}>
