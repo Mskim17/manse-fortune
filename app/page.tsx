@@ -350,7 +350,7 @@ const getJohu = (
   }
 
   // 1. 상태(Status) 및 라벨(Label) 결정 로직 (계절 및 복합 조건 우선)
-  let status: "극열" | "조조" | "극한" | "냉금" | "풍습" | "토중" | "균형";
+  let status: "극열" | "조조" | "극한" | "냉금" | "풍습" | "토중" | "균형" = "균형";
   let label = "균형 ☯️";
   let yongsinEl = "토"; // 기본값 초기화
 
@@ -400,7 +400,7 @@ const getJohu = (
     yongsinEl = "목";
   } else {
     // 계절 특수성이 없는 일반 과다
-    const generalMap: Record<string, { status: typeof status; label: string }> = {
+    const generalMap: Record<string, { status: "극열" | "극한" | "풍습" | "조조" | "토중" | "냉금" | "균형"; label: string }> = {
       화: { status: "극열", label: "火多 (화다) 🔥" },
       수: { status: "극한", label: "水多 (수다) 💧" },
       목: { status: "풍습", label: "木多 (목다) 🌳" },
