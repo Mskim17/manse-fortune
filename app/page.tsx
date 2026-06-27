@@ -27,6 +27,7 @@ interface FortuneResult {
     energy: string;
     colors: { name: string; hex: string; desc: string }[];
     direction: string;
+    colorBasis: string;
     advice: string;
     caution: string;
     activity: string;
@@ -40,7 +41,7 @@ interface FortuneResult {
     dominantText: string | null;
     tripleText: string | null;
     johu: {
-      status: "극열" | "극한" | "평이" | "풍습" | "조조" | "토중";
+      status: "극열" | "극한" | "평이" | "풍습" | "조조" | "토중" | "냉금";
       label: string;
       yongsin: string;
       solution: string[];
@@ -103,13 +104,68 @@ const elementDirection: Record<string, string> = {
   수: "북쪽·북서쪽",
 };
 
-// ── 추천 색상·방향 계산 (조후 용신 우선) ──
-const getColors = (dayPillar: string, johuYongsinEl?: string) => {
-  const el = johuYongsinEl || ganToElement[dayPillar[0]];
+// ── 추천 색상 계산 ──
+const getColors = (
+  sajuDay: string,  // 사주 일간
+  strength: { strength: "신강" | "신약" | "중화"; score: number },
+  johu: { status: string; yongsinEl: string },
+  dayPillar: string,  // 일진 (방향용)
+) => {
+  const dayEl = ganToElement[sajuDay[0]];  // 사주 일간 오행
+  const dayPillarEl = ganToElement[dayPillar[0]];  // 일진 오행 (방향용)
+  console.log("johu.status", johu);
+  // 나를 생해주는 오행 (인성) — 신약일 때 보강
+  const insung: Record<string, string> = {
+    목: "수",  // 수생목
+    화: "목",  // 목생화
+    토: "화",  // 화생토
+    금: "토",  // 토생금
+    수: "금",  // 금생수
+  };
+
+  // 내가 생하는 오행 (식상) — 신강일 때 설기
+  const setGi: Record<string, string> = {
+    목: "화",  // 목생화
+    화: "토",  // 화생토
+    토: "금",  // 토생금
+    금: "수",  // 금생수
+    수: "목",  // 수생목
+  };
+
+  let targetEl = dayEl;
+  let basis = "일진 기준";
+
+  if (strength.strength === "신약") {
+    // 신약 → 인성(나를 생해주는 오행) 색상으로 보강
+    targetEl = insung[dayEl];
+    basis = "신약 기준";
+  } else if (strength.strength === "신강") {
+    // 신강 → 식상(내가 생하는 오행) 색상으로 설기
+    targetEl = setGi[dayEl];
+    basis = "신강 기준";
+
+    // 극열·극한 조후가 겹치면 조후 용신으로 override
+    if (["극열", "극한"].includes(johu.status) && johu.yongsinEl) {
+      targetEl = johu.yongsinEl;
+      basis = `조후(${johu.status}) 기준`;
+    }
+  } else {
+    // 중화 → 조후 기준
+    if (johu.yongsinEl && johu.status !== "평이") {
+      targetEl = johu.yongsinEl;
+      basis = `조후(${johu.status}) 기준`;
+    } else {
+      // 일진 기준
+      targetEl = dayEl;
+      basis = "일진 기준";
+    }
+  }
+
   return {
-    colors: elementColorCodes[el] || elementColorCodes["금"],
-    direction: elementDirection[el] || "중앙",
-    element: el,
+    colors: elementColorCodes[targetEl] || elementColorCodes["금"],
+    direction: elementDirection[targetEl],
+    element: targetEl,
+    basis,
   };
 };
 
@@ -192,28 +248,25 @@ const calcStrength = (
   const monthJiEl = jiToElement[monthJi] || "";
 
   allPillars.forEach((pillar) => {
-    if (!pillar || pillar === "미상") return;
-    const gan = pillar[0];
-    const ji = pillar[1];
+  if (!pillar || pillar === "미상") return;
+  const gan = pillar[0];
+  const ji = pillar[1];
 
-    [gan, ji].forEach((char) => {
-      if (!char) return;
-      const el = ganToElement[char] || jiToElement[char];
-      if (!el) return;
+  [gan, ji].forEach((char) => {
+    if (!char) return;
+    const el = ganToElement[char] || jiToElement[char];
+    if (!el) return;
 
-      // 월지 해당 글자면 가중치 2배
-      const isMonthJiChar = jiToElement[char] === monthJiEl && !!jiToElement[char];
-      const point = isMonthJiChar ? 2 : 1;
+    const isMonthJiChar = jiToElement[char] === monthJiEl && !!jiToElement[char];
+    const point = isMonthJiChar ? 3 : 1;  // 2 → 3으로 변경
 
-      if (el === sameEl || el === inEl) {
-        // 일간과 같은 오행(비겁) or 생해주는 오행(인성) → 강화
-        supportScore += point;
-      } else {
-        // 나머지 → 설기·극
-        weakenScore += point;
-      }
-    });
+    if (el === sameEl || el === inEl) {
+      supportScore += point;
+    } else {
+      weakenScore += point;
+    }
   });
+});
 
   // 일주 자체는 제외 (일간은 본인이라 계산에서 빼야 함)
   // 일지만 반영
@@ -241,7 +294,7 @@ const calcStrength = (
     desc = "일간의 기운이 균형 잡혀 있어요. 오늘은 어떤 활동도 무난하게 소화할 수 있는 안정적인 날이에요.";
   }
 
-  return { strength, score: Math.round(ratio * 100), desc };
+  return { strength, score: parseFloat((ratio * 100).toFixed(1)), desc };
 };
 
 // ── 조후 판단 ──
@@ -395,7 +448,7 @@ const getJohu = (
   if (isChange && topElement === "토") solution.unshift("환절기 토중 — 기운 정체가 가장 심한 시기예요");
 
   return {
-    status: "균형",
+    status: status as "극열" | "극한" | "풍습" | "조조" | "토중",  // ← status 변수 사용
     label,
     yongsin: yongsinName[yongsinEl],
     yongsinEl,
@@ -480,6 +533,7 @@ const johuBg: Record<string, string> = {
   조조: "rgba(186,117,23,0.1)",
   토중: "rgba(136,135,128,0.1)",
   평이: "rgba(108,99,255,0.05)",
+  냉금: "rgba(24,95,165,0.1)",
 };
 
 const johuBorder: Record<string, string> = {
@@ -489,11 +543,13 @@ const johuBorder: Record<string, string> = {
   조조: "rgba(186,117,23,0.3)",
   토중: "rgba(136,135,128,0.3)",
   평이: "rgba(108,99,255,0.2)",
+  냉금: "rgba(24,95,165,0.3)",
 };
 
 const johuTextColor: Record<string, string> = {
   극열: "#D85A30", 극한: "#185FA5", 풍습: "#3B6D11",
   조조: "#BA7517", 토중: "#888780", 평이: "#6c63ff",
+  냉금: "#185FA5",
 };
 
 export default function Home() {
@@ -556,12 +612,8 @@ export default function Home() {
       const johu = getJohu(data.monthPillar, data.dayPillar, elementResult.scores, elementResult.total);
       const strengthResult = calcStrength(data.saju, data.dayPillar, data.monthPillar);
 
-      // 조후 용신이 있으면 용신 기준 색상·방향, 없으면 일진 기준
-      // 조후 용신 오행 기준으로 색상·방향 결정
-      const colorInfo = getColors(
-        data.dayPillar,
-        johu.yongsinEl || undefined
-      );
+      // 신강/산약 -> 조후 -> 용신 우선순위
+      const colorInfo = getColors(data.saju.day, strengthResult, johu, data.dayPillar);
 
       const tripleText = elementResult.tripleChar
         ? `⚠️ 지지 삼중첩(${elementResult.tripleChar}${elementResult.tripleChar}${elementResult.tripleChar}) 감지 — 해당 오행이 극도로 강해져 편중된 에너지가 작용해요. 오늘은 특히 균형에 주의하세요.`
@@ -574,6 +626,7 @@ export default function Home() {
           energy: desc.energy,
           colors: colorInfo.colors,
           direction: colorInfo.direction,
+          colorBasis: colorInfo.basis,
           advice: desc.advice,
           caution: desc.caution,
           activity: desc.activity,
@@ -894,12 +947,12 @@ export default function Home() {
 
                 {/* 추천 색상 */}
                 <div style={{ background: "var(--bg2)", borderRadius: 12, padding: 16, marginBottom: 12 }}>
-                  <p style={{ fontSize: 11, color: "#6c63ff", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 4 }}>// 오늘 추천 색상</p>
-                  {result.analysis.johu.status !== "평이" && (
-                    <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 10 }}>
-                      조후 용신({result.analysis.johu.yongsin}) 기준으로 조정됐어요.
-                    </p>
-                  )}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                    <p style={{ fontSize: 11, color: "#6c63ff", letterSpacing: "0.1em", textTransform: "uppercase", margin: 0 }}>// 오늘 추천 색상</p>
+                    <span style={{ fontSize: 11, color: "var(--muted)", background: "var(--card)", padding: "3px 8px", borderRadius: 10 }}>
+                      {result.analysis.colorBasis}
+                    </span>
+                  </div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
                     {result.analysis.colors.map((c) => (
                       <div key={c.name} style={{ background: "var(--card)", borderRadius: 8, padding: "12px 8px", textAlign: "center", border: "1px solid var(--border)" }}>
@@ -914,11 +967,6 @@ export default function Home() {
                 {/* 길한 방향 */}
                 <div style={{ background: "var(--bg2)", borderRadius: 12, padding: 16 }}>
                   <p style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>// 길한 방향</p>
-                  {result.analysis.johu.status !== "평이" && (
-                    <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>
-                      조후 용신({result.analysis.johu.yongsin}) 기준으로 조정됐어요.
-                    </p>
-                  )}
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     <div style={{ fontSize: 28 }}>🧭</div>
                     <div style={{ fontSize: 18, fontWeight: 700, color: "var(--accent2)" }}>{result.analysis.direction}</div>
