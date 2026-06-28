@@ -51,6 +51,26 @@ interface FortuneResult {
       score: number;
       desc: string;
     };
+    geokkuk: {
+      name: string;
+      tenGod: string;
+      desc: string;
+      yongsin: string;
+      yongsinEl: string;
+    };
+    yongsin: {
+      yongsinEl: string;
+      yongsin: string;
+      heesinEl: string;
+      heesin: string;
+      gisinEl: string;
+      gisин: string;
+      gusinEl: string;
+      gusin: string;
+      hansinEl: string;
+      hansin: string;
+      desc: string;
+    };
   };
 }
 
@@ -106,57 +126,49 @@ const elementDirection: Record<string, string> = {
 
 // ── 추천 색상 계산 ──
 const getColors = (
-  sajuDay: string,  // 사주 일간
+  sajuDay: string,
   strength: { strength: "신강" | "신약" | "중화"; score: number },
   johu: { status: string; yongsinEl: string },
-  dayPillar: string,  // 일진 (방향용)
+  dayPillar: string,
+  yongsin?: { yongsinEl: string; heesinEl: string },
 ) => {
-  const dayEl = ganToElement[sajuDay[0]];  // 사주 일간 오행
-  const dayPillarEl = ganToElement[dayPillar[0]];  // 일진 오행 (방향용)
-  console.log("johu.status", johu);
-  // 나를 생해주는 오행 (인성) — 신약일 때 보강
-  const insung: Record<string, string> = {
-    목: "수",  // 수생목
-    화: "목",  // 목생화
-    토: "화",  // 화생토
-    금: "토",  // 토생금
-    수: "금",  // 금생수
-  };
+  const dayEl = ganToElement[sajuDay[0]];
+  const dayPillarEl = ganToElement[dayPillar[0]];
 
-  // 내가 생하는 오행 (식상) — 신강일 때 설기
-  const setGi: Record<string, string> = {
-    목: "화",  // 목생화
-    화: "토",  // 화생토
-    토: "금",  // 토생금
-    금: "수",  // 금생수
-    수: "목",  // 수생목
-  };
-
-  let targetEl = dayEl;
+  let targetEl = dayPillarEl;
   let basis = "일진 기준";
 
-  if (strength.strength === "신약") {
-    // 신약 → 인성(나를 생해주는 오행) 색상으로 보강
-    targetEl = insung[dayEl];
+  // 1순위: 억부용신
+  if (yongsin?.yongsinEl) {
+    targetEl = yongsin.yongsinEl;
+    basis = "억부용신 기준";
+  } else if (strength.strength === "신약") {
+    const insungEl: Record<string, string> = {
+      목: "수", 화: "목", 토: "화", 금: "토", 수: "금",
+    };
+    targetEl = insungEl[dayEl];
     basis = "신약 기준";
   } else if (strength.strength === "신강") {
-    // 신강 → 식상(내가 생하는 오행) 색상으로 설기
+    const setGi: Record<string, string> = {
+      목: "화", 화: "토", 토: "금", 금: "수", 수: "목",
+    };
     targetEl = setGi[dayEl];
     basis = "신강 기준";
+  }
 
-    // 극열·극한 조후가 겹치면 조후 용신으로 override
-    if (["극열", "극한"].includes(johu.status) && johu.yongsinEl) {
-      targetEl = johu.yongsinEl;
-      basis = `조후(${johu.status}) 기준`;
-    }
-  } else {
-    // 중화 → 조후 기준
+  // 2순위: 극열·극한 조후 override
+  if (["극열", "극한"].includes(johu.status) && johu.yongsinEl) {
+    targetEl = johu.yongsinEl;
+    basis = `조후(${johu.status}) 기준`;
+  }
+
+  // 중화이면서 억부용신 없으면 조후
+  if (strength.strength === "중화" && !yongsin?.yongsinEl) {
     if (johu.yongsinEl && johu.status !== "평이") {
       targetEl = johu.yongsinEl;
       basis = `조후(${johu.status}) 기준`;
     } else {
-      // 일진 기준
-      targetEl = dayEl;
+      targetEl = dayPillarEl;
       basis = "일진 기준";
     }
   }
@@ -230,71 +242,395 @@ const calcStrength = (
   const dayGan = dayPillar[0];
   const dayEl = ganToElement[dayGan];
 
-  // 일간을 생해주는 오행 (인성)
-  const gen: Record<string, string> = {
+  // 인성 오행 (나를 생해주는 오행)
+  const insungEl: Record<string, string> = {
     목: "수", 화: "목", 토: "화", 금: "토", 수: "금",
   };
-  // 일간과 같은 오행 (비겁)
   const sameEl = dayEl;
-  // 인성 오행
-  const inEl = gen[dayEl];
+  const inEl = insungEl[dayEl];
 
-  const allPillars = [saju.year, saju.month, saju.day, saju.hour];
-  let supportScore = 0;
-  let weakenScore = 0;
-
-  // 월지 가중치
+  // ── 지장간 테이블 ──
+  const jiJangGan: Record<string, { gan: string; ratio: number }[]> = {
+    자: [{ gan: "계", ratio: 1.0 }],
+    축: [{ gan: "기", ratio: 0.6 }, { gan: "신", ratio: 0.3 }, { gan: "계", ratio: 0.1 }],
+    인: [{ gan: "갑", ratio: 0.6 }, { gan: "병", ratio: 0.3 }, { gan: "무", ratio: 0.1 }],
+    묘: [{ gan: "을", ratio: 1.0 }],
+    진: [{ gan: "무", ratio: 0.6 }, { gan: "을", ratio: 0.3 }, { gan: "계", ratio: 0.1 }],
+    사: [{ gan: "병", ratio: 0.6 }, { gan: "경", ratio: 0.3 }, { gan: "무", ratio: 0.1 }],
+    오: [{ gan: "정", ratio: 0.7 }, { gan: "기", ratio: 0.3 }],
+    미: [{ gan: "기", ratio: 0.6 }, { gan: "을", ratio: 0.3 }, { gan: "정", ratio: 0.1 }],
+    신: [{ gan: "경", ratio: 0.6 }, { gan: "임", ratio: 0.3 }, { gan: "무", ratio: 0.1 }],
+    유: [{ gan: "신", ratio: 1.0 }],
+    술: [{ gan: "무", ratio: 0.6 }, { gan: "신", ratio: 0.3 }, { gan: "정", ratio: 0.1 }],
+    해: [{ gan: "임", ratio: 0.6 }, { gan: "갑", ratio: 0.4 }],
+  };
+  
   const monthJi = monthPillar[1] || "";
   const monthJiEl = jiToElement[monthJi] || "";
 
-  allPillars.forEach((pillar) => {
-  if (!pillar || pillar === "미상") return;
-  const gan = pillar[0];
-  const ji = pillar[1];
+  let supportScore = 0;
+  let weakenScore = 0;
 
-  [gan, ji].forEach((char) => {
-    if (!char) return;
-    const el = ganToElement[char] || jiToElement[char];
-    if (!el) return;
+  const allPillars = [saju.year, saju.month, saju.day, saju.hour];
 
-    const isMonthJiChar = jiToElement[char] === monthJiEl && !!jiToElement[char];
-    const point = isMonthJiChar ? 3 : 1;  // 2 → 3으로 변경
+  allPillars.forEach((pillar, pillarIdx) => {
+    if (!pillar || pillar === "미상") return;
+    const gan = pillar[0];
+    const ji = pillar[1];
 
-    if (el === sameEl || el === inEl) {
-      supportScore += point;
-    } else {
-      weakenScore += point;
+    // 천간 계산
+    if (gan) {
+      const el = ganToElement[gan];
+      if (el) {
+        // 일간 자체는 제외
+        if (pillarIdx === 2 && gan === dayGan) return;
+
+        // 월지 해당 오행이면 가중치 1.5배
+        const isMonthJiEl = el === monthJiEl;
+        const point = isMonthJiEl ? 1.5 : 1;
+
+        if (el === sameEl || el === inEl) {
+          supportScore += point;
+        } else {
+          weakenScore += point;
+        }
+      }
+    }
+    
+    // 지지 계산 (지장간 비율 반영)
+    if (ji && jiJangGan[ji]) {
+      const isMonthJi = ji === monthJi;
+      const basePoint = isMonthJi ? 3 : 1;  // 월지 3배 가중치
+
+      jiJangGan[ji].forEach(({ gan: jgGan, ratio }) => {
+        const el = ganToElement[jgGan];
+        if (!el) return;
+        const point = basePoint * ratio;
+        if (el === sameEl || el === inEl) {
+          supportScore += point;
+        } else {
+          weakenScore += point;
+        }
+      });
     }
   });
-});
-
-  // 일주 자체는 제외 (일간은 본인이라 계산에서 빼야 함)
-  // 일지만 반영
-  const dayJiEl = jiToElement[dayPillar[1]] || "";
-  if (dayJiEl === sameEl || dayJiEl === inEl) {
-    supportScore += 1;
-  } else {
-    weakenScore += 1;
-  }
-
+  
   const total = supportScore + weakenScore;
   const ratio = supportScore / total;
+  const score = parseFloat((ratio * 100).toFixed(1));
 
   let strength: "신강" | "신약" | "중화";
   let desc: string;
 
-  if (ratio >= 0.55) {
+  if (ratio >= 0.60) {
     strength = "신강";
-    desc = "일간의 기운이 강해요. 오늘은 에너지가 넘치지만 지나치게 고집스러워질 수 있어요. 설기(식상·재성)(검,청,붉)로 에너지를 발산하는 활동이 좋아요.";
-  } else if (ratio <= 0.45) {
+    desc = "일간의 기운이 강해요. 오늘은 에너지가 넘치지만 지나치게 고집스러워질 수 있어요. 설기(식상·재성) 활동으로 에너지를 발산하는 게 좋아요.";
+  } else if (ratio <= 0.40) {
     strength = "신약";
-    desc = "일간의 기운이 약해요. 오늘은 체력 소모에 주의하고 무리한 계획보다 내실 있는 하루를 보내세요. 인성·비겁(황토,흰) 기운으로 충전이 필요해요.";
+    desc = "일간의 기운이 약해요. 오늘은 체력 소모에 주의하고 무리한 계획보다 내실 있는 하루를 보내세요. 인성·비겁 기운으로 충전이 필요해요.";
   } else {
     strength = "중화";
     desc = "일간의 기운이 균형 잡혀 있어요. 오늘은 어떤 활동도 무난하게 소화할 수 있는 안정적인 날이에요.";
   }
 
-  return { strength, score: parseFloat((ratio * 100).toFixed(1)), desc };
+  return { strength, score, desc };
+};
+
+// ── 격국 판단 ──
+const calcGeokkuk = (
+  saju: { year: string; month: string; day: string; hour: string },
+  dayPillar: string,
+  monthPillar: string,
+): {
+  name: string;
+  tenGod: string;
+  desc: string;
+  yongsin: string;
+  yongsinEl: string;
+} => {
+
+  const jiJangGan: Record<string, { gan: string; ratio: number }[]> = {
+    자: [{ gan: "계", ratio: 1.0 }],
+    축: [{ gan: "기", ratio: 0.6 }, { gan: "신", ratio: 0.3 }, { gan: "계", ratio: 0.1 }],
+    인: [{ gan: "갑", ratio: 0.6 }, { gan: "병", ratio: 0.3 }, { gan: "무", ratio: 0.1 }],
+    묘: [{ gan: "을", ratio: 1.0 }],
+    진: [{ gan: "무", ratio: 0.6 }, { gan: "을", ratio: 0.3 }, { gan: "계", ratio: 0.1 }],
+    사: [{ gan: "병", ratio: 0.6 }, { gan: "경", ratio: 0.3 }, { gan: "무", ratio: 0.1 }],
+    오: [{ gan: "정", ratio: 0.7 }, { gan: "기", ratio: 0.3 }],
+    미: [{ gan: "기", ratio: 0.6 }, { gan: "을", ratio: 0.3 }, { gan: "정", ratio: 0.1 }],
+    신: [{ gan: "경", ratio: 0.6 }, { gan: "임", ratio: 0.3 }, { gan: "무", ratio: 0.1 }],
+    유: [{ gan: "신", ratio: 1.0 }],
+    술: [{ gan: "무", ratio: 0.6 }, { gan: "신", ratio: 0.3 }, { gan: "정", ratio: 0.1 }],
+    해: [{ gan: "임", ratio: 0.6 }, { gan: "갑", ratio: 0.4 }],
+  };
+
+  const dayGan = dayPillar[0];
+  const monthJi = monthPillar[1] || "";
+  const monthJiGans = jiJangGan[monthJi] || [];
+
+  // 사주 천간 전체 수집 (일간 제외)
+  const allGans = [
+    saju.year[0], saju.month[0], saju.hour[0],
+  ].filter(Boolean);
+
+  // 투간 여부 확인 (월지 지장간이 사주 천간에 있는지)
+  let formatGan: string | null = null;
+  for (const { gan } of monthJiGans) {
+    if (allGans.includes(gan)) {
+      formatGan = gan;
+      break;
+    }
+  }
+
+  // 투간 없으면 월지 본기(가장 비율 높은 지장간) 사용
+  if (!formatGan) {
+    formatGan = monthJiGans[0]?.gan || "";
+  }
+
+  // 격국 천간 기준 십신 계산
+  const formatEl = ganToElement[formatGan] || "";
+  const dayEl = ganToElement[dayGan] || "";
+  const dayYin = ["을", "정", "기", "신", "계"].includes(dayGan);
+  const formatYin = ["을", "정", "기", "신", "계"].includes(formatGan);
+
+  const gen: Record<string, string> = { 목: "화", 화: "토", 토: "금", 금: "수", 수: "목" };
+  const con: Record<string, string> = { 목: "토", 화: "금", 토: "수", 금: "목", 수: "화" };
+
+  let tenGod = "기타";
+  if (formatEl === dayEl) {
+    tenGod = dayYin === formatYin ? "비견" : "겁재";
+  } else if (gen[dayEl] === formatEl) {
+    tenGod = dayYin === formatYin ? "식신" : "상관";
+  } else if (gen[formatEl] === dayEl) {
+    tenGod = dayYin === formatYin ? "편인" : "정인";
+  } else if (con[dayEl] === formatEl) {
+    tenGod = dayYin === formatYin ? "편재" : "정재";
+  } else if (con[formatEl] === dayEl) {
+    tenGod = dayYin === formatYin ? "편관" : "정관";
+  }
+
+  // 격국명
+  const geokkukName: Record<string, string> = {
+    비견: "건록격(建祿格)",
+    겁재: "양인격(羊刃格)",
+    식신: "식신격(食神格)",
+    상관: "상관격(傷官格)",
+    편재: "편재격(偏財格)",
+    정재: "정재격(正財格)",
+    편관: "편관격(偏官格)",
+    정관: "정관격(正官格)",
+    편인: "편인격(偏印格)",
+    정인: "정인격(正印格)",
+  };
+
+  // 격국별 용신 (신강 기준 기본값)
+  // 실제로는 신강/신약 결합해서 판단해야 함
+  const geokkukYongsin: Record<string, { yongsin: string; yongsinEl: string; desc: string }> = {
+    식신격: {
+      yongsin: "재성(財星)",
+      yongsinEl: con[formatEl] || "",
+      desc: "식신이 재성을 생해 재물과 표현력이 강한 격이에요. 창의적 활동과 수익 창출에 유리해요.",
+    },
+    상관격: {
+      yongsin: "재성(財星) 또는 인성(印星)",
+      yongsinEl: con[formatEl] || "",
+      desc: "상관이 강해 표현력과 반골 기질이 강한 격이에요. 예술·기술·자유업에 유리하나 관성을 극하므로 주의가 필요해요.",
+    },
+    편재격: {
+      yongsin: "식상(食傷)",
+      yongsinEl: gen[dayEl] || "",
+      desc: "편재가 강해 활동력과 재물 운이 강한 격이에요. 사업·투자·영업에 유리해요.",
+    },
+    정재격: {
+      yongsin: "식상(食傷) 또는 관성(官星)",
+      yongsinEl: gen[dayEl] || "",
+      desc: "정재가 강해 성실하고 안정적인 재물 운을 가진 격이에요. 꼼꼼한 재무 관리에 탁월해요.",
+    },
+    편관격: {
+      yongsin: "식신(食神)",
+      yongsinEl: gen[dayEl] || "",
+      desc: "편관이 강해 도전·극복 기질이 강한 격이에요. 군·경·법조·리더십 분야에 유리해요.",
+    },
+    정관격: {
+      yongsin: "재성(財星) 또는 인성(印星)",
+      yongsinEl: con[dayEl] || "",
+      desc: "정관이 강해 명예와 책임감이 강한 격이에요. 공직·관리직·조직 생활에 유리해요.",
+    },
+    편인격: {
+      yongsin: "재성(財星)",
+      yongsinEl: con[formatEl] || "",
+      desc: "편인이 강해 직관과 학문적 기질이 강한 격이에요. 연구·철학·종교·예술 분야에 유리해요.",
+    },
+    정인격: {
+      yongsin: "관성(官星)",
+      yongsinEl: con[dayEl] || "",
+      desc: "정인이 강해 학습과 내면 정리 능력이 뛰어난 격이에요. 교육·문화·학문 분야에 유리해요.",
+    },
+    건록격: {
+      yongsin: "재성(財星) 또는 관성(官星)",
+      yongsinEl: con[dayEl] || "",
+      desc: "일간과 같은 오행이 강해 독립심과 자립 기질이 강한 격이에요. 자영업·리더십에 유리해요.",
+    },
+    양인격: {
+      yongsin: "관성(官星)",
+      yongsinEl: con[dayEl] || "",
+      desc: "겁재가 강해 추진력과 경쟁심이 강한 격이에요. 강한 에너지를 관성으로 제어해야 해요.",
+    },
+  };
+
+  const name = geokkukName[tenGod] || "잡격(雜格)";
+  const yongsinInfo = geokkukYongsin[name.split("(")[0]] || {
+    yongsin: "균형",
+    yongsinEl: "",
+    desc: "복합적인 구조로 개인 상황에 따라 용신이 달라져요.",
+  };
+
+  return {
+    name,
+    tenGod,
+    desc: yongsinInfo.desc,
+    yongsin: yongsinInfo.yongsin,
+    yongsinEl: yongsinInfo.yongsinEl,
+  };
+};
+
+// ── 억부용신 계산 ──
+const calcYongsin = (
+  strength: { strength: "신강" | "신약" | "중화"; score: number },
+  geokkuk: { name: string; tenGod: string; yongsinEl: string },
+  dayPillar: string,
+  monthPillar: string,
+): {
+  yongsinEl: string;
+  yongsin: string;
+  heesinEl: string;
+  heesin: string;
+  gisinEl: string;
+  gisин: string;
+  gusinEl: string;   // 추가
+  gusin: string;     // 추가
+  hansinEl: string;  // 추가
+  hansin: string;    // 추가
+  desc: string;
+} => {
+  const dayGan = dayPillar[0];
+  const dayEl = ganToElement[dayGan];
+
+  const gen: Record<string, string> = {
+    목: "화", 화: "토", 토: "금", 금: "수", 수: "목",
+  };
+  const con: Record<string, string> = {
+    목: "토", 화: "금", 토: "수", 금: "목", 수: "화",
+  };
+  const insungEl: Record<string, string> = {
+    목: "수", 화: "목", 토: "화", 금: "토", 수: "금",
+  };
+
+  const elName: Record<string, string> = {
+    목: "목(木)", 화: "화(火)", 토: "토(土)", 금: "금(金)", 수: "수(水)",
+  };
+
+  let yongsinEl = "";
+  let gisinEl = "";
+  let heesinEl = "";
+  let desc = "";
+
+  const { tenGod } = geokkuk;
+
+  if (strength.strength === "신강") {
+    // 신강 → 설기·극 오행이 용신
+    // 격국별 세분화
+    if (["식신", "상관"].includes(tenGod)) {
+      // 식신격·상관격 신강 → 재성 용신
+      yongsinEl = con[dayEl];
+      heesinEl = gen[dayEl];  // 식상 (희신 - 재성 생해줌)
+      gisinEl = insungEl[dayEl];  // 인성 (기신 - 식상 극함)
+      desc = `${geokkuk.name} 신강 사주예요. 식상이 강하니 재성(${elName[con[dayEl]]})으로 에너지를 흘려보내는 것이 좋아요. 창의력을 재물로 연결하는 활동이 유리해요.`;
+    } else if (["편재", "정재"].includes(tenGod)) {
+      // 재격 신강 → 관성 용신
+      yongsinEl = con[con[dayEl]];  // 재성을 극하는 관성
+      heesinEl = con[dayEl];  // 재성 (희신)
+      gisinEl = insungEl[dayEl];  // 인성 (기신)
+      desc = `${geokkuk.name} 신강 사주예요. 재성이 강하니 관성(${elName[con[con[dayEl]]]})으로 균형을 잡아야 해요. 책임감과 규율로 재물을 관리하는 것이 유리해요.`;
+    } else if (["편관", "정관"].includes(tenGod)) {
+      // 관격 신강 → 식신 용신 (관 제어)
+      yongsinEl = gen[dayEl];
+      heesinEl = con[dayEl];  // 재성 (희신 - 관 생해줌)
+      gisinEl = insungEl[dayEl];  // 인성 (기신)
+      desc = `${geokkuk.name} 신강 사주예요. 관성의 압박을 식상(${elName[gen[dayEl]]})으로 제어해야 해요. 창의적 표현으로 스트레스를 해소하는 것이 좋아요.`;
+    } else if (["편인", "정인"].includes(tenGod)) {
+      // 인격 신강 → 재성 용신 (인성 제어)
+      yongsinEl = con[insungEl[dayEl]];  // 인성을 극하는 재성
+      heesinEl = con[dayEl];
+      gisinEl = insungEl[dayEl];
+      desc = `${geokkuk.name} 신강 사주예요. 인성이 과다하니 재성(${elName[con[insungEl[dayEl]]]})으로 균형을 잡아야 해요. 학습한 것을 실용적으로 활용하는 것이 좋아요.`;
+    } else {
+      // 건록격·양인격 신강
+      yongsinEl = con[dayEl];  // 재성
+      heesinEl = gen[dayEl];
+      gisinEl = insungEl[dayEl];
+      desc = `${geokkuk.name} 신강 사주예요. 강한 기운을 재성(${elName[con[dayEl]]})이나 관성으로 설기해야 해요. 활동적이고 도전적인 일에 에너지를 쏟는 것이 좋아요.`;
+    }
+  } else if (strength.strength === "신약") {
+    // 신약 → 비겁·인성이 용신
+    if (["편관", "정관"].includes(tenGod)) {
+      // 관격 신약 → 인성 용신 (관이 인성 생하게)
+      yongsinEl = insungEl[dayEl];
+      heesinEl = dayEl;  // 비겁 (희신)
+      gisinEl = con[dayEl];  // 재성 (기신 - 인성 극함)
+      desc = `${geokkuk.name} 신약 사주예요. 관성의 압박이 강하니 인성(${elName[insungEl[dayEl]]})으로 일간을 보강해야 해요. 학습과 내실을 다지는 활동이 유리해요.`;
+    } else if (["식신", "상관"].includes(tenGod)) {
+      // 식상격 신약 → 비겁 용신 (설기 막기)
+      yongsinEl = dayEl;  // 비겁
+      heesinEl = insungEl[dayEl];  // 인성 (희신)
+      gisinEl = gen[dayEl];  // 식상 (기신 - 설기함)
+      desc = `${geokkuk.name} 신약 사주예요. 식상이 일간을 설기하니 비겁(${elName[dayEl]})으로 기운을 보강해야 해요. 무리한 표현·활동보다 충전하는 날로 쓰는 것이 좋아요.`;
+    } else if (["편재", "정재"].includes(tenGod)) {
+      // 재격 신약 → 비겁 용신
+      yongsinEl = dayEl;  // 비겁
+      heesinEl = insungEl[dayEl];  // 인성
+      gisinEl = con[dayEl];  // 재성 (기신)
+      desc = `${geokkuk.name} 신약 사주예요. 재성이 일간을 극하니 비겁(${elName[dayEl]})으로 기운을 보강해야 해요. 무리한 지출·투자보다 내실을 다지는 것이 좋아요.`;
+    } else {
+      // 인격·기타 신약 → 인성 용신
+      yongsinEl = insungEl[dayEl];
+      heesinEl = dayEl;  // 비겁
+      gisinEl = con[insungEl[dayEl]];  // 재성 (인성 극함)
+      desc = `${geokkuk.name} 신약 사주예요. 인성(${elName[insungEl[dayEl]]})으로 일간을 보강하는 것이 좋아요. 학습·휴식·내면 충전에 집중하는 날이에요.`;
+    }
+  } else {
+    // 중화 → 격국 용신 따름
+    yongsinEl = geokkuk.yongsinEl || dayEl;
+    heesinEl = insungEl[yongsinEl] || "";
+    gisinEl = con[yongsinEl] || "";
+    desc = `${geokkuk.name} 중화 사주예요. 격국 용신인 ${elName[yongsinEl] || "균형"}을 활용하는 것이 좋아요. 균형 잡힌 하루를 보낼 수 있어요.`;
+  }
+
+  // 희신 = 용신을 생해주는 오행
+  heesinEl = insungEl[yongsinEl] || heesinEl;
+  // 기신 = 용신을 극하는 오행
+  gisinEl = con[yongsinEl] || gisinEl;
+  // 구신 = 기신을 생해주는 오행 (기신 강화)
+  const gusinEl = insungEl[gisinEl] || "";
+  // 한신 = 용신·기신 어느쪽도 아닌 중립
+  const allEl = ["목", "화", "토", "금", "수"];
+  const hansinEl = allEl.find(
+    (el) => el !== yongsinEl && el !== heesinEl && el !== gisinEl && el !== gusinEl
+  ) || "";
+
+  return {
+    yongsinEl,
+    yongsin: elName[yongsinEl] || "균형",
+    heesinEl,
+    heesin: elName[heesinEl] || "",
+    gisinEl,
+    gisин: elName[gisinEl] || "",
+    gusinEl,
+    gusin: elName[gusinEl] || "",
+    hansinEl,
+    hansin: elName[hansinEl] || "",
+    desc,
+  };
 };
 
 // ── 조후 판단 ──
@@ -611,9 +947,16 @@ export default function Home() {
       const elementResult = calcElementScore(data.saju, data.dayPillar, data.monthPillar);
       const johu = getJohu(data.monthPillar, data.dayPillar, elementResult.scores, elementResult.total);
       const strengthResult = calcStrength(data.saju, data.dayPillar, data.monthPillar);
+      const geokkukResult = calcGeokkuk(data.saju, data.dayPillar, data.monthPillar);
+      const yongsinResult = calcYongsin(strengthResult, geokkukResult, data.dayPillar, data.monthPillar);
 
-      // 신강/산약 -> 조후 -> 용신 우선순위
-      const colorInfo = getColors(data.saju.day, strengthResult, johu, data.dayPillar);
+      const colorInfo = getColors(
+        data.saju.day,
+        strengthResult,
+        johu,
+        data.dayPillar,
+        yongsinResult,  // 억부용신 추가
+      );
 
       const tripleText = elementResult.tripleChar
         ? `⚠️ 지지 삼중첩(${elementResult.tripleChar}${elementResult.tripleChar}${elementResult.tripleChar}) 감지 — 해당 오행이 극도로 강해져 편중된 에너지가 작용해요. 오늘은 특히 균형에 주의하세요.`
@@ -634,6 +977,8 @@ export default function Home() {
           tripleText,
           johu,
           strength: strengthResult,
+          geokkuk: geokkukResult,
+          yongsin: yongsinResult,
         },
       });
     } catch { alert("분석 중 오류가 발생했어요."); }
@@ -818,18 +1163,44 @@ export default function Home() {
                   <p style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>// 오행 점수</p>
                   {Object.entries(result.analysis.elementScore.scores).map(([el, score]) => {
                     const pct = result.analysis.elementScore.percentage[el];
-                    const elColor: Record<string, string> = { 목: "#3B6D11", 화: "#D85A30", 토: "#BA7517", 금: "#888780", 수: "#185FA5" };
+                    const elColor: Record<string, string> = {
+                      목: "#3B6D11", 화: "#D85A30", 토: "#BA7517", 금: "#888780", 수: "#185FA5"
+                    };
                     const isDominant = result.analysis.elementScore.dominant === el;
+                    const isYongsin = result.analysis.yongsin?.yongsinEl === el;
+                    const isHeesin = result.analysis.yongsin?.heesinEl === el;
+                    const isGisin = result.analysis.yongsin?.gisinEl === el;
+                    const isGusin = result.analysis.yongsin?.gusinEl === el;
+
+                    const tag = isYongsin ? "용신 💎"
+                      : isHeesin ? "희신 ✨"
+                      : isGisin ? "기신 ⚠️"
+                      : isGusin ? "구신 🔻"
+                      : isDominant ? "과다 ⚡"
+                      : "";
+
+                    const tagColor = isYongsin ? "#00d4aa"
+                      : isHeesin ? "#a78bfa"
+                      : isGisin ? "#ff6b6b"
+                      : isGusin ? "#f59e0b"
+                      : isDominant ? "#ff6b6b"
+                      : "var(--muted)";
+
                     return (
-                      <div key={el} style={{ marginBottom: 8 }}>
+                      <div key={el} style={{ marginBottom: 10 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
-                          <span style={{ color: isDominant ? elColor[el] : "var(--text)", fontWeight: isDominant ? 700 : 400 }}>
-                            {el} {isDominant ? "⚠️ 과다" : ""}
-                          </span>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <span style={{ color: "var(--text)", fontWeight: tag ? 700 : 400 }}>{el}</span>
+                            {tag && (
+                              <span style={{ fontSize: 10, color: tagColor, background: `${tagColor}20`, padding: "1px 6px", borderRadius: 10 }}>
+                                {tag}
+                              </span>
+                            )}
+                          </div>
                           <span style={{ color: "var(--muted)" }}>{score}점 ({pct}%)</span>
                         </div>
                         <div style={{ height: 6, background: "var(--card)", borderRadius: 3, overflow: "hidden" }}>
-                          <div style={{ height: "100%", width: `${pct}%`, background: elColor[el], borderRadius: 3, transition: "width 0.5s" }} />
+                          <div style={{ height: "100%", width: `${pct}%`, background: elColor[el], borderRadius: 3, transition: "width 0.5s", opacity: isGisin || isGusin ? 0.5 : 1 }} />
                         </div>
                       </div>
                     );
@@ -944,7 +1315,65 @@ export default function Home() {
                     {result.analysis.strength.desc}
                   </p>
                 </div>
+                
+                {/* 격국 판단 */}
+                <div style={{ background: "var(--bg2)", borderRadius: 12, padding: 16, marginBottom: 12 }}>
+                  <p style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>// 격국 판단</p>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                    <div style={{ background: "rgba(0,212,170,0.15)", border: "1px solid rgba(0,212,170,0.3)", color: "#00d4aa", borderRadius: 6, padding: "4px 12px", fontSize: 13, fontWeight: 700 }}>
+                      {result.analysis.geokkuk.name}
+                    </div>
+                  </div>
+                  <div style={{ background: "var(--card)", borderRadius: 8, padding: "12px 14px", marginBottom: 10 }}>
+                    <div style={{ fontSize: 11, color: "var(--accent2)", marginBottom: 6 }}>✦ 격국 특성</div>
+                    <div style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>{result.analysis.geokkuk.desc}</div>
+                  </div>
+                  <div style={{ background: "var(--card)", borderRadius: 8, padding: "12px 14px" }}>
+                    <div style={{ fontSize: 11, color: "#a78bfa", marginBottom: 6 }}>💎 격국 용신</div>
+                    <div style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>
+                      <strong style={{ fontWeight: 700 }}>{result.analysis.geokkuk.yongsin}</strong>
+                    </div>
+                  </div>
+                </div> 
+                
+                {/* 억부용신 */}
+                {result.analysis.yongsin && (
+                  <div style={{ background: "var(--bg2)", borderRadius: 12, padding: 16, marginBottom: 12 }}>
+                    <p style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>// 억부용신</p>
 
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
+                      <div style={{ background: "rgba(0,212,170,0.1)", border: "1px solid rgba(0,212,170,0.3)", borderRadius: 8, padding: "10px 8px", textAlign: "center" }}>
+                        <div style={{ fontSize: 11, color: "#00d4aa", marginBottom: 4 }}>용신 💎</div>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: "#00d4aa" }}>{result.analysis.yongsin.yongsin}</div>
+                      </div>
+                      <div style={{ background: "rgba(167,139,250,0.1)", border: "1px solid rgba(167,139,250,0.3)", borderRadius: 8, padding: "10px 8px", textAlign: "center" }}>
+                        <div style={{ fontSize: 11, color: "#a78bfa", marginBottom: 4 }}>희신 ✨</div>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: "#a78bfa" }}>{result.analysis.yongsin.heesin}</div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 12 }}>
+                      <div style={{ background: "rgba(255,107,107,0.1)", border: "1px solid rgba(255,107,107,0.3)", borderRadius: 8, padding: "10px 8px", textAlign: "center" }}>
+                        <div style={{ fontSize: 11, color: "#ff6b6b", marginBottom: 4 }}>기신 ⚠️</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "#ff6b6b" }}>{result.analysis.yongsin.gisин}</div>
+                      </div>
+                      <div style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 8, padding: "10px 8px", textAlign: "center" }}>
+                        <div style={{ fontSize: 11, color: "#f59e0b", marginBottom: 4 }}>구신 🔻</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "#f59e0b" }}>{result.analysis.yongsin.gusin}</div>
+                      </div>
+                      <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 8px", textAlign: "center" }}>
+                        <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 4 }}>한신 ➖</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--muted)" }}>{result.analysis.yongsin.hansin}</div>
+                      </div>
+                    </div>
+
+                    <div style={{ background: "var(--card)", borderRadius: 8, padding: "12px 14px" }}>
+                      <div style={{ fontSize: 11, color: "var(--accent2)", marginBottom: 6 }}>✦ 용신 해설</div>
+                      <div style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>{result.analysis.yongsin.desc}</div>
+                    </div>
+                  </div>
+                )}
+                
                 {/* 추천 색상 */}
                 <div style={{ background: "var(--bg2)", borderRadius: 12, padding: 16, marginBottom: 12 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
