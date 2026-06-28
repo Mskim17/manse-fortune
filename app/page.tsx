@@ -71,6 +71,12 @@ interface FortuneResult {
       hansin: string;
       desc: string;
     };
+    finalYongsin: {
+      finalYongsinEl: string;
+      finalYongsin: string;
+      confidence: "확실" | "보통" | "참고";
+      reason: string;
+    };
   };
 }
 
@@ -633,6 +639,74 @@ const calcYongsin = (
   };
 };
 
+// ── 최종 용신 확정 ──
+const calcFinalYongsin = (
+  yongsin: { yongsinEl: string; yongsin: string; heesinEl: string; heesin: string; gisinEl: string; gusinEl: string; },
+  geokkuk: { yongsinEl: string; },
+  johu: { yongsinEl: string; status: string; },
+): {
+  finalYongsinEl: string;
+  finalYongsin: string;
+  confidence: "확실" | "보통" | "참고";
+  reason: string;
+} => {
+  const elName: Record<string, string> = {
+    목: "목(木)", 화: "화(火)", 토: "토(土)", 금: "금(金)", 수: "수(水)",
+  };
+
+  const 억부 = yongsin.yongsinEl;
+  const 격국 = geokkuk.yongsinEl;
+  const 조후 = johu.yongsinEl;
+
+  // 억부 + 격국 + 조후 모두 일치
+  if (억부 === 격국 && 억부 === 조후 && 조후) {
+    return {
+      finalYongsinEl: 억부,
+      finalYongsin: elName[억부],
+      confidence: "확실",
+      reason: `억부용신·격국용신·조후용신이 모두 ${elName[억부]}으로 일치해요. 매우 확실한 용신이에요.`,
+    };
+  }
+
+  // 억부 + 격국 일치
+  if (억부 === 격국) {
+    return {
+      finalYongsinEl: 억부,
+      finalYongsin: elName[억부],
+      confidence: "확실",
+      reason: `억부용신과 격국용신이 ${elName[억부]}으로 일치해요. 확실한 용신이에요.${조후 && 조후 !== 억부 ? ` 조후는 ${elName[조후]}을 보조 활용하세요.` : ""}`,
+    };
+  }
+
+  // 억부 + 조후 일치
+  if (억부 === 조후 && 조후) {
+    return {
+      finalYongsinEl: 억부,
+      finalYongsin: elName[억부],
+      confidence: "확실",
+      reason: `억부용신과 조후용신이 ${elName[억부]}으로 일치해요. 계절 에너지까지 맞는 강한 용신이에요.`,
+    };
+  }
+
+  // 희신이 격국용신과 일치
+  if (yongsin.heesinEl === 격국) {
+    return {
+      finalYongsinEl: 억부,
+      finalYongsin: elName[억부],
+      confidence: "보통",
+      reason: `억부용신은 ${elName[억부]}, 격국용신 ${elName[격국]}은 희신으로 작용해요. 두 오행을 함께 활용하면 좋아요.`,
+    };
+  }
+
+  // 셋 다 다른 경우 → 억부용신 우선
+  return {
+    finalYongsinEl: 억부,
+    finalYongsin: elName[억부],
+    confidence: "참고",
+    reason: `억부용신 ${elName[억부]}을 우선으로 하되, 격국용신 ${elName[격국]}과 조후용신 ${조후 ? elName[조후] : "없음"}을 참고하세요. 사주 구조가 복합적이에요.`,
+  };
+};
+
 // ── 조후 판단 ──
 const getJohu = (
   monthPillar: string,
@@ -949,13 +1023,14 @@ export default function Home() {
       const strengthResult = calcStrength(data.saju, data.dayPillar, data.monthPillar);
       const geokkukResult = calcGeokkuk(data.saju, data.dayPillar, data.monthPillar);
       const yongsinResult = calcYongsin(strengthResult, geokkukResult, data.dayPillar, data.monthPillar);
+      const finalYongsinResult = calcFinalYongsin(yongsinResult, geokkukResult, johu);
 
       const colorInfo = getColors(
         data.saju.day,
         strengthResult,
         johu,
         data.dayPillar,
-        yongsinResult,  // 억부용신 추가
+        { yongsinEl: finalYongsinResult.finalYongsinEl, heesinEl: yongsinResult.heesinEl },
       );
 
       const tripleText = elementResult.tripleChar
@@ -979,6 +1054,7 @@ export default function Home() {
           strength: strengthResult,
           geokkuk: geokkukResult,
           yongsin: yongsinResult,
+          finalYongsin: finalYongsinResult,
         },
       });
     } catch { alert("분석 중 오류가 발생했어요."); }
@@ -1336,6 +1412,51 @@ export default function Home() {
                   </div>
                 </div> 
                 
+                {/* 최종 용신 */}
+                {result.analysis.finalYongsin && (
+                  <div style={{
+                    background: result.analysis.finalYongsin.confidence === "확실"
+                      ? "rgba(0,212,170,0.1)"
+                      : result.analysis.finalYongsin.confidence === "보통"
+                      ? "rgba(108,99,255,0.1)"
+                      : "rgba(245,158,11,0.1)",
+                    border: `1px solid ${result.analysis.finalYongsin.confidence === "확실"
+                      ? "rgba(0,212,170,0.3)"
+                      : result.analysis.finalYongsin.confidence === "보통"
+                      ? "rgba(108,99,255,0.3)"
+                      : "rgba(245,158,11,0.3)"}`,
+                    borderRadius: 12, padding: 16, marginBottom: 12
+                  }}>
+                    <p style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>// 최종 용신</p>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                      <div style={{
+                        fontSize: 22, fontWeight: 700,
+                        color: result.analysis.finalYongsin.confidence === "확실" ? "#00d4aa"
+                          : result.analysis.finalYongsin.confidence === "보통" ? "#6c63ff"
+                          : "#f59e0b"
+                      }}>
+                        {result.analysis.finalYongsin.finalYongsin}
+                      </div>
+                      <div style={{
+                        fontSize: 11, padding: "3px 10px", borderRadius: 12, fontWeight: 600,
+                        background: result.analysis.finalYongsin.confidence === "확실"
+                          ? "rgba(0,212,170,0.2)"
+                          : result.analysis.finalYongsin.confidence === "보통"
+                          ? "rgba(108,99,255,0.2)"
+                          : "rgba(245,158,11,0.2)",
+                        color: result.analysis.finalYongsin.confidence === "확실" ? "#00d4aa"
+                          : result.analysis.finalYongsin.confidence === "보통" ? "#6c63ff"
+                          : "#f59e0b",
+                      }}>
+                        {result.analysis.finalYongsin.confidence}
+                      </div>
+                    </div>
+                    <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>
+                      {result.analysis.finalYongsin.reason}
+                    </p>
+                  </div>
+                )}
+
                 {/* 억부용신 */}
                 {result.analysis.yongsin && (
                   <div style={{ background: "var(--bg2)", borderRadius: 12, padding: 16, marginBottom: 12 }}>
