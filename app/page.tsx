@@ -130,6 +130,154 @@ const elementDirection: Record<string, string> = {
   수: "북쪽·북서쪽",
 };
 
+const helpContents: Record<string, { title: string; content: string }> = {
+  일진: {
+    title: "일진 (日辰) 이란?",
+    content: `일진은 오늘 날짜의 천간(天干)과 지지(地支) 조합이에요.
+
+- 세운(歲運): 올해 연도의 간지 → 1년 전체 운의 흐름
+- 월건(月建): 이번 달의 간지 → 한 달 운의 흐름  
+- 일진(日辰): 오늘의 간지 → 하루 운의 흐름
+
+천간 10개(갑을병정무기경신임계)와 지지 12개(자축인묘진사오미신유술해)가 조합되어 60갑자를 이뤄요.`,
+  },
+  사주원국: {
+    title: "사주 원국 (四柱原局) 이란?",
+    content: `사주(四柱)는 태어난 년·월·일·시의 네 기둥을 말해요.
+
+- 년주(年柱): 태어난 해의 간지
+- 월주(月柱): 태어난 달의 간지
+- 일주(日柱): 태어난 날의 간지 → 일간(日干)이 나 자신
+- 시주(時柱): 태어난 시간의 간지
+
+각 기둥은 천간(위)과 지지(아래)로 이루어져 있어요.
+일간(일주의 천간)이 사주 분석의 기준점이에요.`,
+  },
+  오행점수: {
+    title: "오행 점수 란?",
+    content: `사주 원국과 오늘 일진의 오행(목·화·토·금·수) 분포를 점수로 나타낸 거예요.
+
+- 월지(月支)에 해당하는 오행은 3배 가중치
+- 나머지 천간·지지는 기본 점수
+
+오행이 한쪽으로 치우치면 그 오행이 과다해져 부작용이 생길 수 있어요.
+
+- 용신 💎: 나에게 가장 필요한 오행
+- 희신 ✨: 용신을 도와주는 오행
+- 기신 ⚠️: 나에게 해로운 오행
+- 구신 🔻: 기신을 도와주는 오행
+- 한신 ➖: 중립 오행`,
+  },
+  신강신약: {
+    title: "신강·신약 (身强·身弱) 이란?",
+    content: `일간(나 자신)의 기운이 강한지 약한지를 나타내요.
+
+- 신강(身强): 일간을 도와주는 비겁·인성 기운이 강한 상태
+  → 에너지가 넘치지만 고집이 세질 수 있어요
+  → 설기(식상·재성·관성)로 에너지를 발산해야 해요
+
+- 신약(身弱): 일간을 설기·극하는 기운이 강한 상태
+  → 체력이 약해지기 쉬워요
+  → 인성·비겁으로 충전이 필요해요
+
+- 중화(中和): 강약이 균형 잡힌 상태
+  → 가장 이상적인 상태예요
+
+점수 50% 기준으로 60% 이상이면 신강, 40% 이하면 신약이에요.`,
+  },
+  조후: {
+    title: "조후 (調候) 란?",
+    content: `계절의 온도·습도 균형을 맞추는 개념이에요.
+
+사주가 아무리 좋아도 계절 기운이 극단적이면 보정이 필요해요.
+
+- 극열(極熱): 여름 + 화(火) 과다 → 수(水)로 식혀야
+- 극한(極寒): 겨울 + 수(水) 과다 → 화(火)로 따뜻하게
+- 풍습(風濕): 봄 + 목(木) 과다 → 금(金)으로 제어
+- 조조(燥熱): 가을 + 금(金) 과다 → 화(火)로 부드럽게
+- 토중(土重): 환절기 + 토(土) 과다 → 목(木)으로 뚫어야
+
+조후용신은 계절 불균형을 보정하는 오행이에요.`,
+  },
+  격국: {
+    title: "격국 (格局) 이란?",
+    content: `사주의 전체적인 구조와 특성을 나타내는 틀이에요.
+
+월지(月支) 지장간 중 천간에 투간(透干)된 글자를 기준으로 정해요.
+
+- 식신격: 창의·표현·베풂이 특기
+- 상관격: 반골 기질, 예술·기술에 강함
+- 편재격: 활동력·사업 기질 강함
+- 정재격: 성실·안정적 재물 운
+- 편관격: 도전·리더십·군경 기질
+- 정관격: 명예·책임감·공직 기질
+- 편인격: 직관·학문·철학 기질
+- 정인격: 학습·교육·문화 기질
+- 건록격: 독립심·자립 기질
+- 양인격: 강한 추진력·경쟁심
+
+격국은 타고난 적성과 기질을 나타내요.`,
+  },
+  억부용신: {
+    title: "억부용신 (抑扶用神) 이란?",
+    content: `신강·신약을 기준으로 일간의 균형을 맞추는 오행이에요.
+
+- 신강 → 억(抑): 강한 기운을 눌러줘야
+  식상·재성·관성이 용신 후보
+
+- 신약 → 부(扶): 약한 기운을 도와줘야
+  인성·비겁이 용신 후보
+
+- 용신 💎: 가장 필요한 오행 → 이 색상·방향 활용
+- 희신 ✨: 용신을 생해주는 오행 → 보조 활용
+- 기신 ⚠️: 용신을 극하는 오행 → 피해야
+- 구신 🔻: 기신을 생해주는 오행 → 조심
+- 한신 ➖: 중립 오행
+
+억부용신이 추천 색상·방향의 1순위 기준이에요.`,
+  },
+  최종용신: {
+    title: "최종 용신 이란?",
+    content: `억부용신·격국용신·조후용신을 종합해서 확정한 최종 용신이에요.
+
+- 확실: 세 가지 용신이 일치 → 매우 강한 용신
+- 보통: 두 가지가 일치 → 신뢰할 수 있는 용신
+- 참고: 세 가지가 모두 다름 → 억부용신 우선, 나머지 참고
+
+최종 용신 오행의 색상을 입거나 그 방향으로 행동하면 좋아요.
+
+⚠️ 사주는 통계적 경향성이며 절대적인 운명이 아니에요.`,
+  },
+  십신: {
+    title: "십신 (十神) 이란?",
+    content: `일간(나 자신)을 기준으로 오늘 일진 천간과의 관계를 10가지로 분류한 거예요.
+
+- 비견·겁재: 일간과 같은 오행 → 자신감·경쟁심
+- 식신·상관: 일간이 생하는 오행 → 창의·표현
+- 편재·정재: 일간이 극하는 오행 → 재물·활동
+- 편관·정관: 일간을 극하는 오행 → 도전·명예
+- 편인·정인: 일간을 생하는 오행 → 학습·충전
+
+음양이 같으면 편(偏), 다르면 정(正)이에요.`,
+  },
+  지지관계: {
+    title: "지지 합충형 이란?",
+    content: `일주 지지와 일진 지지의 관계예요.
+
+- 육합 ✨: 두 지지가 서로 합쳐져 조화로운 에너지
+  자축·인해·묘술·진유·사신·오미
+
+- 충 ⚡: 서로 정반대로 충돌하는 에너지
+  자오·축미·인신·묘유·진술·사해
+
+- 삼합 🌟: 세 지지가 모여 강한 시너지
+  신자진(水)·인오술(火)·해묘미(木)·사유축(金)
+
+- 형 ⚠️: 서로 마찰·갈등하는 에너지
+  인사신·축술미·자묘`,
+  },
+};
+
 // ── 추천 색상 계산 ──
 const getColors = (
   sajuDay: string,
@@ -967,6 +1115,8 @@ export default function Home() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
+  const [helpModal, setHelpModal] = useState<{ title: string; content: string } | null>(null);
+  
   const [birth, setBirth] = useState<BirthInfo>({
     year: "", month: "", day: "", hour: "", minute: "",
     name: "", unknownHour: false, isLunar: false,
@@ -1075,8 +1225,36 @@ export default function Home() {
     boxSizing: "border-box",
   };
 
+  const HelpButton = ({ id }: { id: string }) => (
+    <button
+      onClick={() => setHelpModal(helpContents[id])}
+      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "var(--muted)", padding: "0 4px", lineHeight: 1 }}>
+      🔍
+    </button>
+  );
+  
   return (
     <main style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)", fontFamily: "Pretendard, -apple-system, sans-serif" }}>
+      {/* 도움말 팝업 */}
+      {helpModal && (
+        <div
+          onClick={() => setHelpModal(null)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: "var(--bg2)", borderRadius: 16, padding: 24, maxWidth: 400, width: "100%", maxHeight: "80vh", overflowY: "auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)" }}>{helpModal.title}</h3>
+              <button
+                onClick={() => setHelpModal(null)}
+                style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--muted)" }}>✕</button>
+            </div>
+            <div style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.9, whiteSpace: "pre-line" }}>
+              {helpModal.content}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 헤더 */}
       <div style={{ padding: "2px 20px 0", maxWidth: 480, margin: "0 auto" }}>
@@ -1209,7 +1387,7 @@ export default function Home() {
               <div>
                 {/* 일진·사주 원국 */}
                 <div style={{ background: "var(--bg2)", borderRadius: 12, padding: 16, marginBottom: 12 }}>
-                  <p style={{ fontSize: 11, color: "#6c63ff", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>// 오늘 일진</p>
+                  <p style={{ fontSize: 11, color: "#6c63ff", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>// 오늘 일진 <HelpButton id="일진" /></p>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 12 }}>
                     {[["세운", result.yearPillar], ["월건", result.monthPillar], ["일진", result.dayPillar]].map(([label, value]) => (
                       <div key={label} style={{ background: "var(--card)", borderRadius: 8, padding: "12px 8px", textAlign: "center" }}>
@@ -1223,7 +1401,7 @@ export default function Home() {
                       음력 → 양력 변환: {result.convertedSolar.year}년 {result.convertedSolar.month}월 {result.convertedSolar.day}일
                     </div>
                   )}
-                  <p style={{ fontSize: 11, color: "#6c63ff", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>// 사주 원국</p>
+                  <p style={{ fontSize: 11, color: "#6c63ff", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>// 사주 원국 <HelpButton id="사주원국" /></p>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
                     {[["시", result.saju.hour], ["일", result.saju.day], ["월", result.saju.month], ["년", result.saju.year]].map(([label, value]) => (
                       <div key={label} style={{ background: "var(--card2)", borderRadius: 8, padding: "10px 6px", textAlign: "center" }}>
@@ -1236,7 +1414,7 @@ export default function Home() {
 
                 {/* 오행 점수 */}
                 <div style={{ background: "var(--bg2)", borderRadius: 12, padding: 16, marginBottom: 12 }}>
-                  <p style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>// 오행 점수</p>
+                  <p style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>// 오행 점수 <HelpButton id="오행점수" /></p>
                   {Object.entries(result.analysis.elementScore.scores).map(([el, score]) => {
                     const pct = result.analysis.elementScore.percentage[el];
                     const elColor: Record<string, string> = {
@@ -1286,7 +1464,7 @@ export default function Home() {
                 {/* 조후 판단 */}
                 <div style={{ background: johuBg[result.analysis.johu.status], border: `1px solid ${johuBorder[result.analysis.johu.status]}`, borderRadius: 12, padding: 16, marginBottom: 12 }}>
                   <p style={{ fontSize: 11, color: johuTextColor[result.analysis.johu.status], letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 10 }}>
-                    // 조후 판단 — {result.analysis.johu.label}
+                    // 조후 판단 — {result.analysis.johu.label} <HelpButton id="조후" />
                   </p>
                   {result.analysis.johu.yongsin && (
                     <p style={{ fontSize: 14, color: "var(--text)", marginBottom: 10 }}>
@@ -1306,7 +1484,7 @@ export default function Home() {
                 {result.analysis.jijiRelation && (
                   <div style={{ background: "var(--card)", borderRadius: 8, padding: "10px 14px", marginBottom: 12 }}>
                     <div style={{ fontSize: 12, color: "var(--accent2)", marginBottom: 4 }}>
-                      지지 관계 — {result.analysis.jijiRelation.type}
+                      지지 관계 — {result.analysis.jijiRelation.type}<HelpButton id="지지관계" />
                     </div>
                     <div style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>
                       {result.analysis.jijiRelation.desc}
@@ -1315,6 +1493,8 @@ export default function Home() {
                 )}
 
                 {/* 십신 분석 */}
+                // 십신 배지 옆에 추가
+                <HelpButton id="십신" />
                 <div style={{ background: "var(--bg2)", borderRadius: 12, padding: 16, marginBottom: 12 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
                     <div style={{ background: "#6c63ff", color: "white", borderRadius: 6, padding: "4px 12px", fontSize: 13, fontWeight: 700 }}>
@@ -1338,7 +1518,7 @@ export default function Home() {
                 
                 {/* 신강/신약 */}
                 <div style={{ background: "var(--bg2)", borderRadius: 12, padding: 16, marginBottom: 12 }}>
-                  <p style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>// 신강·신약 판단</p>
+                  <p style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>// 신강·신약 판단 <HelpButton id="신강신약" /></p>
                   <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
                     <div style={{
                       padding: "6px 16px", borderRadius: 20, fontWeight: 700, fontSize: 15,
@@ -1394,7 +1574,7 @@ export default function Home() {
                 
                 {/* 격국 판단 */}
                 <div style={{ background: "var(--bg2)", borderRadius: 12, padding: 16, marginBottom: 12 }}>
-                  <p style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>// 격국 판단</p>
+                  <p style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>// 격국 판단 <HelpButton id="격국" /></p>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
                     <div style={{ background: "rgba(0,212,170,0.15)", border: "1px solid rgba(0,212,170,0.3)", color: "#00d4aa", borderRadius: 6, padding: "4px 12px", fontSize: 13, fontWeight: 700 }}>
                       {result.analysis.geokkuk.name}
@@ -1427,7 +1607,7 @@ export default function Home() {
                       : "rgba(245,158,11,0.3)"}`,
                     borderRadius: 12, padding: 16, marginBottom: 12
                   }}>
-                    <p style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>// 최종 용신</p>
+                    <p style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>// 최종 용신 <HelpButton id="최종용신" /></p>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
                       <div style={{
                         fontSize: 22, fontWeight: 700,
@@ -1460,7 +1640,7 @@ export default function Home() {
                 {/* 억부용신 */}
                 {result.analysis.yongsin && (
                   <div style={{ background: "var(--bg2)", borderRadius: 12, padding: 16, marginBottom: 12 }}>
-                    <p style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>// 억부용신</p>
+                    <p style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>// 억부용신 <HelpButton id="억부용신" /></p>
 
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
                       <div style={{ background: "rgba(0,212,170,0.1)", border: "1px solid rgba(0,212,170,0.3)", borderRadius: 8, padding: "10px 8px", textAlign: "center" }}>
