@@ -1050,6 +1050,14 @@ const getJijiRelation = (dayJi: string, targetJi: string) => {
 // ── 지지 추출 ──
 const pillarToJi = (pillar: string) => pillar[1] || "";
 
+const tenGodColor: Record<string, string> = {
+  비견: "#6c63ff", 겁재: "#6c63ff",
+  식신: "#00d4aa", 상관: "#00d4aa",
+  편재: "#D85A30", 정재: "#D85A30",
+  편관: "#ff6b6b", 정관: "#ff6b6b",
+  편인: "#a78bfa", 정인: "#a78bfa",
+};
+
 // ── 십신 계산 ──
 const getTenGod = (dayGan: string, targetGan: string): string => {
   const dayEl = ganToElement[dayGan];
@@ -1116,7 +1124,15 @@ export default function Home() {
   useEffect(() => setMounted(true), []);
 
   const [helpModal, setHelpModal] = useState<{ title: string; content: string } | null>(null);
-  
+
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const today = new Date();
+    return { year: today.getFullYear(), month: today.getMonth() + 1 };
+  });
+  const [monthData, setMonthData] = useState<{ date: string; dayPillar: string }[]>([]);
+  const [monthLoading, setMonthLoading] = useState(false);
+
   const [birth, setBirth] = useState<BirthInfo>({
     year: "", month: "", day: "", hour: "", minute: "",
     name: "", unknownHour: false, isLunar: false,
@@ -1132,11 +1148,35 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [activeTab, setActiveTab] = useState<"fortune" | "birth">("fortune");
-
+  
   useEffect(() => {
     const savedBirth = localStorage.getItem("birth-info");
-    if (savedBirth) { setBirth(JSON.parse(savedBirth)); setSaved(true); }
+    if (savedBirth) {
+      const parsedBirth = JSON.parse(savedBirth);
+      setBirth(parsedBirth);
+      setSaved(true);
+    }
+
+    // 시간대 자동 테마는 기존 그대로
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme) return;
+
+    const checkTimeTheme = () => {
+      const seoulTime = new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" });
+      const hour = new Date(seoulTime).getHours();
+      const isDayTime = hour >= 6 && hour < 18;
+      setTheme(isDayTime ? "light" : "dark");
+    };
+    checkTimeTheme();
+    const interval = setInterval(checkTimeTheme, 60 * 1000);
+    return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (saved && !result) {
+      analyze();
+    }
+  }, [saved]);
 
   const saveBirth = () => {
     localStorage.setItem("birth-info", JSON.stringify(birth));
@@ -1144,17 +1184,42 @@ export default function Home() {
     setActiveTab("fortune");
   };
 
-  const analyze = async () => {
+  const fetchMonthData = async (year: number, month: number) => {
+    setMonthLoading(true);
+    try {
+      const res = await fetch("/api/saju/month", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ year, month }),
+      });
+      const data = await res.json();
+      setMonthData(data.days || []);
+    } catch {
+      setMonthData([]);
+    } finally {
+      setMonthLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (calendarOpen) {
+      fetchMonthData(calendarMonth.year, calendarMonth.month);
+    }
+  }, [calendarOpen, calendarMonth]);
+
+  const analyze = async (dateOverride?: string) => {
     setLoading(true);
     setResult(null);
     try {
+      const useDate = dateOverride || targetDate;  
+
       const res = await fetch("/api/saju", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           birthYear: birth.year, birthMonth: birth.month, birthDay: birth.day,
           birthHour: birth.hour, unknownHour: birth.unknownHour,
-          isLunar: birth.isLunar, targetDate,
+          isLunar: birth.isLunar, targetDate: useDate, 
         }),
       });
       const data = await res.json();
@@ -1256,6 +1321,124 @@ export default function Home() {
         </div>
       )}
 
+      {calendarOpen && (
+        <div
+          onClick={() => setCalendarOpen(false)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: "var(--bg2)", borderRadius: 16, padding: 20, maxWidth: 420, width: "100%", maxHeight: "85vh", overflowY: "auto" }}>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <button
+                onClick={() => setCalendarMonth((m) => {
+                  const newMonth = m.month === 1 ? 12 : m.month - 1;
+                  const newYear = m.month === 1 ? m.year - 1 : m.year;
+                  return { year: newYear, month: newMonth };
+                })}
+                style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--text)", padding: 6 }}>‹</button>
+
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>
+                {calendarMonth.year}년 {calendarMonth.month}월
+              </h3>
+
+              <button
+                onClick={() => setCalendarMonth((m) => {
+                  const newMonth = m.month === 12 ? 1 : m.month + 1;
+                  const newYear = m.month === 12 ? m.year + 1 : m.year;
+                  return { year: newYear, month: newMonth };
+                })}
+                style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--text)", padding: 6 }}>›</button>
+            </div>
+
+            {monthLoading ? (
+              <div style={{ textAlign: "center", padding: "40px 0", color: "var(--muted)", fontSize: 14 }}>불러오는 중...</div>
+            ) : (
+              <>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 8 }}>
+                  {["일", "월", "화", "수", "목", "금", "토"].map((d, i) => (
+                    <div key={d} style={{ textAlign: "center", fontSize: 11, color: i === 0 ? "#ff6b6b" : i === 6 ? "#6c63ff" : "var(--muted)", fontWeight: 600 }}>{d}</div>
+                  ))}
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
+                  {(() => {
+                    const firstDay = new Date(calendarMonth.year, calendarMonth.month - 1, 1).getDay();
+                    const blanks = Array.from({ length: firstDay }, (_, i) => <div key={`blank-${i}`} />);
+
+                    const dayCells = monthData.map((d) => {
+                      const dayNum = Number(d.date.split("-")[2]);
+                      const todayStr = (() => {
+                        const t = new Date();
+                        return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
+                      })();
+                      const isToday = d.date === todayStr;
+                      const isSelected = d.date === targetDate;
+
+                      let dotColor = "var(--muted)";
+                      if (saved && birth.year) {
+                        const ji = d.dayPillar[0];
+                        const elColorMap: Record<string, string> = {
+                          갑: "#3B6D11", 을: "#3B6D11",
+                          병: "#D85A30", 정: "#D85A30",
+                          무: "#BA7517", 기: "#BA7517",
+                          경: "#888780", 신: "#888780",
+                          임: "#185FA5", 계: "#185FA5",
+                        };
+                        dotColor = elColorMap[ji] || "var(--muted)";
+                      }
+
+                      return (
+                        <button
+                          key={d.date}
+                          onClick={() => {
+                            setTargetDate(d.date);
+                            setCalendarOpen(false);
+                            analyze(d.date);
+                          }}
+                          style={{
+                            background: isSelected ? "#6c63ff" : isToday ? "var(--card)" : "transparent",
+                            border: isToday && !isSelected ? "1px solid var(--accent)" : "1px solid transparent",
+                            borderRadius: 8,
+                            padding: "10px 4px",
+                            cursor: "pointer",
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            gap: 5,
+                          }}>
+                          <span style={{ fontSize: 15, fontWeight: 700, color: isSelected ? "white" : "var(--text)" }}>{dayNum}</span>
+                          <span style={{ fontSize: 11, color: isSelected ? "rgba(255,255,255,0.85)" : "var(--muted)" }}>{d.dayPillar}</span>
+                          <div style={{
+                            width: 16,
+                            height: 7,
+                            borderRadius: 2,
+                            background: dotColor,  // 선택 여부와 무관하게 항상 십신 컬러 유지
+                          }} />
+                        </button>
+                      );
+                    });
+
+                    return [...blanks, ...dayCells];
+                  })()}
+                </div>
+
+                <button
+                  onClick={() => {
+                    const today = new Date();
+                    const y = today.getFullYear(), m = String(today.getMonth() + 1).padStart(2, "0"), d = String(today.getDate()).padStart(2, "0");
+                    setTargetDate(`${y}-${m}-${d}`);
+                    setCalendarMonth({ year: y, month: today.getMonth() + 1 });
+                    setCalendarOpen(false);
+                  }}
+                  style={{ width: "100%", marginTop: 16, padding: "10px", background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, color: "var(--text)", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                  오늘로 이동
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
       {/* 헤더 */}
       <div style={{ padding: "2px 20px 0", maxWidth: 480, margin: "0 auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
@@ -1373,12 +1556,12 @@ export default function Home() {
 
             {/* 날짜 선택 */}
             <div style={{ background: "var(--bg2)", borderRadius: 12, padding: 16, marginBottom: 16 }}>
-              <label style={{ fontSize: 12, color: "var(--muted)", display: "block", marginBottom: 8 }}>운세 날짜 선택</label>
-              <input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)}
-                style={{ ...inputStyle, marginBottom: 12 }} />
-              <button onClick={analyze} disabled={loading || !saved}
-                style={{ width: "100%", padding: "14px", background: loading || !saved ? "#3a3a5c" : "#6c63ff", color: loading || !saved ? "var(--muted)" : "white", border: "none", borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: loading || !saved ? "not-allowed" : "pointer", fontFamily: "inherit", transition: "background 0.2s" }}>
-                {loading ? "분석 중..." : "🔮 운세 분석하기"}
+              <label style={{ fontSize: 12, color: "var(--muted)", display: "block", marginBottom: 8 }}>운세 날짜</label>
+              <button
+                onClick={() => setCalendarOpen(true)}
+                style={{ ...inputStyle, textAlign: "left", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span>{targetDate}</span>
+                <span>📅 날짜 선택</span>
               </button>
             </div>
 
@@ -1493,9 +1676,8 @@ export default function Home() {
                 )}
 
                 {/* 십신 분석 */}
-                // 십신 배지 옆에 추가
-                <HelpButton id="십신" />
                 <div style={{ background: "var(--bg2)", borderRadius: 12, padding: 16, marginBottom: 12 }}>
+                  <p style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>// 십신 분석 <HelpButton id="십신" /></p>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
                     <div style={{ background: "#6c63ff", color: "white", borderRadius: 6, padding: "4px 12px", fontSize: 13, fontWeight: 700 }}>
                       {result.analysis.tenGod}
@@ -1675,15 +1857,16 @@ export default function Home() {
                   </div>
                 )}
                 
-                {/* 추천 색상 */}
+                {/* 추천 색상 + 길한 방향 */}
                 <div style={{ background: "var(--bg2)", borderRadius: 12, padding: 16, marginBottom: 12 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                    <p style={{ fontSize: 11, color: "#6c63ff", letterSpacing: "0.1em", textTransform: "uppercase", margin: 0 }}>// 오늘 추천 색상</p>
+                    <p style={{ fontSize: 11, color: "#6c63ff", letterSpacing: "0.1em", textTransform: "uppercase", margin: 0 }}>// 오늘 추천 색상·방향</p>
                     <span style={{ fontSize: 11, color: "var(--muted)", background: "var(--card)", padding: "3px 8px", borderRadius: 10 }}>
                       {result.analysis.colorBasis}
                     </span>
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 14 }}>
                     {result.analysis.colors.map((c) => (
                       <div key={c.name} style={{ background: "var(--card)", borderRadius: 8, padding: "12px 8px", textAlign: "center", border: "1px solid var(--border)" }}>
                         <div style={{ width: 32, height: 32, borderRadius: "50%", background: c.hex, margin: "0 auto 8px", border: "2px solid rgba(0,0,0,0.1)", boxShadow: "0 2px 6px rgba(0,0,0,0.15)" }} />
@@ -1692,14 +1875,13 @@ export default function Home() {
                       </div>
                     ))}
                   </div>
-                </div>
 
-                {/* 길한 방향 */}
-                <div style={{ background: "var(--bg2)", borderRadius: 12, padding: 16 }}>
-                  <p style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>// 길한 방향</p>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <div style={{ fontSize: 28 }}>🧭</div>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: "var(--accent2)" }}>{result.analysis.direction}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, background: "var(--card)", borderRadius: 8, padding: "12px 14px" }}>
+                    <div style={{ fontSize: 24 }}>🧭</div>
+                    <div>
+                      <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 2 }}>길한 방향</div>
+                      <div style={{ fontSize: 16, fontWeight: 700, color: "var(--accent2)" }}>{result.analysis.direction}</div>
+                    </div>
                   </div>
                 </div>
               </div>
