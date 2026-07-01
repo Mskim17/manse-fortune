@@ -1182,6 +1182,7 @@ export default function Home() {
     localStorage.setItem("birth-info", JSON.stringify(birth));
     setSaved(true);
     setActiveTab("fortune");
+    analyze();
   };
 
   const fetchMonthData = async (year: number, month: number) => {
