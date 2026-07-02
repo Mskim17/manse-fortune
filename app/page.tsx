@@ -80,6 +80,17 @@ interface FortuneResult {
   };
 }
 
+interface PartnerInfo {
+  id: string;
+  name: string;
+  year: number | "";
+  month: number | "";
+  day: number | "";
+  hour: number | "";
+  unknownHour: boolean;
+  isLunar: boolean;
+}
+
 // ── 오행 매핑 ──
 const ganToElement: Record<string, string> = {
   갑: "목", 을: "목", 병: "화", 정: "화", 무: "토",
@@ -855,6 +866,136 @@ const calcFinalYongsin = (
   };
 };
 
+// ── 궁합 분석 ──
+const calcCompatibility = (
+  mySaju: { year: string; month: string; day: string; hour: string },
+  myDayPillar: string,
+  partnerSaju: { year: string; month: string; day: string; hour: string },
+  partnerDayPillar: string,
+): {
+  dayPillarRelation: { type: string; desc: string } | null;
+  elementBalance: { desc: string; score: number };
+  strengthBalance: { desc: string; score: number };
+  totalScore: number;
+  grade: "천생연분" | "좋은궁합" | "보통궁합" | "노력필요";
+  summary: string;
+} => {
+  // 1. 일주 지지 합충형
+  const myJi = myDayPillar[1];
+  const partnerJi = partnerDayPillar[1];
+  const dayPillarRelation = getJijiRelation(myJi, partnerJi);
+
+  // 2. 일주 천간 관계 (십신)
+  const myGan = myDayPillar[0];
+  const partnerGan = partnerDayPillar[0];
+  const myEl = ganToElement[myGan];
+  const partnerEl = ganToElement[partnerGan];
+
+  // 3. 오행 보완 관계 점수
+  const gen: Record<string, string> = {
+    목: "화", 화: "토", 토: "금", 금: "수", 수: "목",
+  };
+  const con: Record<string, string> = {
+    목: "토", 화: "금", 토: "수", 금: "목", 수: "화",
+  };
+
+  let elementScore = 50;
+  let elementDesc = "";
+
+  if (myEl === partnerEl) {
+    elementScore = 60;
+    elementDesc = `두 사람 모두 ${myEl}(${myEl}) 기운이에요. 비슷한 성향으로 공감대는 높지만 경쟁심이 생길 수 있어요.`;
+  } else if (gen[myEl] === partnerEl) {
+    elementScore = 85;
+    elementDesc = `내가 상대를 생해주는 관계예요 (${myEl}→${partnerEl}). 내가 베풀고 상대가 받는 따뜻한 관계예요.`;
+  } else if (gen[partnerEl] === myEl) {
+    elementScore = 85;
+    elementDesc = `상대가 나를 생해주는 관계예요 (${partnerEl}→${myEl}). 상대에게 든든한 지원을 받는 관계예요.`;
+  } else if (con[myEl] === partnerEl) {
+    elementScore = 40;
+    elementDesc = `내가 상대를 극하는 관계예요 (${myEl}→${partnerEl}). 나도 모르게 상대에게 압박을 줄 수 있어요.`;
+  } else if (con[partnerEl] === myEl) {
+    elementScore = 40;
+    elementDesc = `상대가 나를 극하는 관계예요 (${partnerEl}→${myEl}). 상대로부터 자극과 긴장을 받는 관계예요.`;
+  }
+
+  // 4. 신강/신약 균형 점수
+  const myStrength = calcStrength(mySaju, myDayPillar, mySaju.month ? myDayPillar : myDayPillar);
+  const partnerStrength = calcStrength(partnerSaju, partnerDayPillar, partnerDayPillar);
+
+  let strengthScore = 50;
+  let strengthDesc = "";
+
+  const myS = myStrength.strength;
+  const partnerS = partnerStrength.strength;
+
+  if (myS === "신강" && partnerS === "신약") {
+    strengthScore = 80;
+    strengthDesc = "내가 신강, 상대가 신약이에요. 내가 리드하고 상대가 따르는 안정적인 균형이에요.";
+  } else if (myS === "신약" && partnerS === "신강") {
+    strengthScore = 80;
+    strengthDesc = "상대가 신강, 내가 신약이에요. 상대가 리드하고 내가 따르는 안정적인 균형이에요.";
+  } else if (myS === "중화" && partnerS === "중화") {
+    strengthScore = 90;
+    strengthDesc = "두 사람 모두 중화예요. 서로 균형 잡힌 에너지로 조화롭게 맞춰갈 수 있어요.";
+  } else if (myS === "신강" && partnerS === "신강") {
+    strengthScore = 50;
+    strengthDesc = "두 사람 모두 신강이에요. 에너지가 강해 서로 충돌할 수 있지만 강한 파트너십도 가능해요.";
+  } else if (myS === "신약" && partnerS === "신약") {
+    strengthScore = 55;
+    strengthDesc = "두 사람 모두 신약이에요. 서로 의지하며 버티는 관계지만 서로를 지지해주는 따뜻함이 있어요.";
+  } else {
+    strengthScore = 65;
+    strengthDesc = `내가 ${myS}, 상대가 ${partnerS}이에요. 서로 다른 에너지로 보완하는 관계예요.`;
+  }
+
+  // 5. 지지 관계 점수
+  let relationScore = 60;
+  if (dayPillarRelation) {
+    if (dayPillarRelation.type.includes("육합") || dayPillarRelation.type.includes("삼합")) {
+      relationScore = 90;
+    } else if (dayPillarRelation.type.includes("충")) {
+      relationScore = 35;
+    } else if (dayPillarRelation.type.includes("형")) {
+      relationScore = 40;
+    }
+  }
+
+  // 6. 총점 계산 (가중치)
+  const totalScore = Math.round(
+    relationScore * 0.35 +
+    elementScore * 0.35 +
+    strengthScore * 0.30
+  );
+
+  // 7. 등급
+  let grade: "천생연분" | "좋은궁합" | "보통궁합" | "노력필요";
+  let summary = "";
+
+  if (totalScore >= 80) {
+    grade = "천생연분";
+    summary = "두 사람은 서로를 자연스럽게 끌어당기는 강한 인연이에요. 함께할수록 시너지가 커져요.";
+  } else if (totalScore >= 65) {
+    grade = "좋은궁합";
+    summary = "두 사람은 잘 맞는 편이에요. 서로의 다른 점을 인정하면 좋은 관계를 유지할 수 있어요.";
+  } else if (totalScore >= 50) {
+    grade = "보통궁합";
+    summary = "두 사람은 노력하면 좋은 관계가 될 수 있어요. 서로를 이해하는 소통이 중요해요.";
+  } else {
+    grade = "노력필요";
+    summary = "두 사람은 성향 차이가 있어요. 서로의 차이를 이해하고 배려하는 노력이 특히 필요해요.";
+  }
+
+  return {
+    dayPillarRelation,
+    elementBalance: { desc: elementDesc, score: elementScore },
+    strengthBalance: { desc: strengthDesc, score: strengthScore },
+    totalScore,
+    grade,
+    summary,
+  };
+};
+
 // ── 조후 판단 ──
 const getJohu = (
   monthPillar: string,
@@ -1147,14 +1288,30 @@ export default function Home() {
   const [result, setResult] = useState<FortuneResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [activeTab, setActiveTab] = useState<"fortune" | "birth">("fortune");
+  const [activeTab, setActiveTab] = useState<"fortune" | "birth" | "compatibility">("fortune");
   
+  const [partners, setPartners] = useState<PartnerInfo[]>([]);
+  const [selectedPartner, setSelectedPartner] = useState<PartnerInfo | null>(null);
+  const [compatResult, setCompatResult] = useState<any>(null);
+  const [compatLoading, setCompatLoading] = useState(false);
+  const [addingPartner, setAddingPartner] = useState(false);
+  const [newPartner, setNewPartner] = useState<PartnerInfo>({
+    id: "", name: "", year: "", month: "", day: "", hour: "",
+    unknownHour: false, isLunar: false,
+  });
+
   useEffect(() => {
     const savedBirth = localStorage.getItem("birth-info");
     if (savedBirth) {
       const parsedBirth = JSON.parse(savedBirth);
       setBirth(parsedBirth);
       setSaved(true);
+    }
+
+    // 파트너 목록 불러오기 추가
+    const savedPartners = localStorage.getItem("partners");
+    if (savedPartners) {
+      setPartners(JSON.parse(savedPartners));
     }
 
     // 시간대 자동 테마는 기존 그대로
@@ -1183,6 +1340,83 @@ export default function Home() {
     setSaved(true);
     setActiveTab("fortune");
     analyze();
+  };
+
+  const analyzeCompatibility = async (partner: PartnerInfo) => {
+    if (!saved || !partner.year || !partner.month || !partner.day) return;
+    setCompatLoading(true);
+    setCompatResult(null);
+
+    try {
+      // 내 사주 API 호출
+      const myRes = await fetch("/api/saju", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          birthYear: birth.year, birthMonth: birth.month, birthDay: birth.day,
+          birthHour: birth.hour, unknownHour: birth.unknownHour,
+          isLunar: birth.isLunar, targetDate: targetDate,
+        }),
+      });
+      const myData = await myRes.json();
+
+      // 상대방 사주 API 호출
+      const partnerRes = await fetch("/api/saju", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          birthYear: partner.year, birthMonth: partner.month, birthDay: partner.day,
+          birthHour: partner.hour, unknownHour: partner.unknownHour,
+          isLunar: partner.isLunar, targetDate: targetDate,
+        }),
+      });
+      const partnerData = await partnerRes.json();
+
+      // 궁합 계산
+      const compat = calcCompatibility(
+        myData.saju, myData.saju.day,
+        partnerData.saju, partnerData.saju.day,
+      );
+
+      setCompatResult({
+        compat,
+        mySaju: myData.saju,
+        myDayPillar: myData.saju.day,
+        partnerSaju: partnerData.saju,
+        partnerDayPillar: partnerData.saju.day,
+        partnerName: partner.name,
+      });
+
+    } catch {
+      alert("궁합 분석 중 오류가 발생했어요.");
+    } finally {
+      setCompatLoading(false);
+    }
+  };
+
+  const savePartner = () => {
+    if (!newPartner.name || !newPartner.year || !newPartner.month || !newPartner.day) {
+      alert("이름과 생년월일을 입력해주세요.");
+      return;
+    }
+    const partner = { ...newPartner, id: Date.now().toString() };
+    const updated = [...partners, partner];
+    setPartners(updated);
+    localStorage.setItem("partners", JSON.stringify(updated));
+    setNewPartner({ id: "", name: "", year: "", month: "", day: "", hour: "", unknownHour: false, isLunar: false });
+    setAddingPartner(false);
+    setSelectedPartner(partner);
+    analyzeCompatibility(partner);
+  };
+
+  const deletePartner = (id: string) => {
+    const updated = partners.filter((p) => p.id !== id);
+    setPartners(updated);
+    localStorage.setItem("partners", JSON.stringify(updated));
+    if (selectedPartner?.id === id) {
+      setSelectedPartner(null);
+      setCompatResult(null);
+    }
   };
 
   const fetchMonthData = async (year: number, month: number) => {
@@ -1458,7 +1692,7 @@ export default function Home() {
 
         {/* 탭 */}
         <div style={{ display: "flex", gap: 4, marginBottom: 24, background: "var(--bg2)", borderRadius: 10, padding: 4 }}>
-          {[["fortune", "운세 보기"], ["birth", "내 정보"]].map(([tab, label]) => (
+          {[["fortune", "운세"], ["compatibility", "궁합"], ["birth", "내 정보"]].map(([tab, label]) => (
             <button key={tab} onClick={() => setActiveTab(tab as any)}
               style={{ flex: 1, padding: "10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 14, fontWeight: 600, fontFamily: "inherit", background: activeTab === tab ? "#6c63ff" : "transparent", color: activeTab === tab ? "white" : "var(--muted)", transition: "all 0.2s" }}>
               {label}
@@ -1886,6 +2120,233 @@ export default function Home() {
                   </div>
                 </div>
               </div>
+            )}
+          </div>
+        )}
+
+        {/* ── 궁합 탭 ── */}
+        {activeTab === "compatibility" && (
+          <div>
+            {!saved && (
+              <div style={{ background: "#1a1a2e", border: "1px solid rgba(108,99,255,0.3)", borderRadius: 12, padding: 16, marginBottom: 16, textAlign: "center" }}>
+                <p style={{ fontSize: 14, color: "#a0a0ff", marginBottom: 10 }}>먼저 내 정보를 입력해주세요 😊</p>
+                <button onClick={() => setActiveTab("birth")}
+                  style={{ padding: "8px 20px", background: "#6c63ff", color: "white", border: "none", borderRadius: 6, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                  내 정보 입력하기
+                </button>
+              </div>
+            )}
+
+            {saved && (
+              <>
+                {/* 상대방 목록 */}
+                <div style={{ background: "var(--bg2)", borderRadius: 12, padding: 16, marginBottom: 16 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", margin: 0 }}>상대방 목록</p>
+                    <button
+                      onClick={() => setAddingPartner(true)}
+                      style={{ background: "#6c63ff", color: "white", border: "none", borderRadius: 6, padding: "6px 12px", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+                      + 추가
+                    </button>
+                  </div>
+
+                  {partners.length === 0 && !addingPartner && (
+                    <p style={{ fontSize: 13, color: "var(--muted)", textAlign: "center", padding: "16px 0" }}>
+                      상대방 정보를 추가해주세요
+                    </p>
+                  )}
+
+                  {/* 파트너 카드 목록 */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {partners.map((p) => (
+                      <div
+                        key={p.id}
+                        onClick={() => { setSelectedPartner(p); analyzeCompatibility(p); }}
+                        style={{
+                          background: selectedPartner?.id === p.id ? "rgba(108,99,255,0.15)" : "var(--card)",
+                          border: `1px solid ${selectedPartner?.id === p.id ? "rgba(108,99,255,0.5)" : "var(--border)"}`,
+                          borderRadius: 8, padding: "12px 14px", cursor: "pointer",
+                          display: "flex", justifyContent: "space-between", alignItems: "center",
+                        }}>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>{p.name}</div>
+                          <div style={{ fontSize: 12, color: "var(--muted)" }}>
+                            {p.year}년 {p.month}월 {p.day}일 {p.unknownHour ? "" : `${p.hour}시`}
+                          </div>
+                        </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); deletePartner(p.id); }}
+                          style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: 16 }}>✕</button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* 파트너 추가 폼 */}
+                  {addingPartner && (
+                    <div style={{ marginTop: 12, padding: 14, background: "var(--card)", borderRadius: 8, border: "1px solid var(--border)" }}>
+                      <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 10 }}>상대방 정보 입력</p>
+
+                      <input
+                        value={newPartner.name}
+                        onChange={(e) => setNewPartner({ ...newPartner, name: e.target.value })}
+                        placeholder="이름"
+                        style={{ ...inputStyle, marginBottom: 10 }}
+                      />
+
+                      {/* 양력/음력 */}
+                      <div style={{ display: "flex", gap: 4, marginBottom: 10, background: "var(--bg)", borderRadius: 8, padding: 4 }}>
+                        {[["solar", "양력"], ["lunar", "음력"]].map(([val, label]) => (
+                          <button key={val}
+                            onClick={() => setNewPartner({ ...newPartner, isLunar: val === "lunar" })}
+                            style={{ flex: 1, padding: "6px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "inherit", background: (val === "lunar") === newPartner.isLunar ? "var(--accent)" : "transparent", color: (val === "lunar") === newPartner.isLunar ? "white" : "var(--muted)" }}>
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* 년월일 */}
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 10 }}>
+                        {[["년", "year"], ["월", "month"], ["일", "day"]].map(([label, key]) => (
+                          <div key={key}>
+                            <label style={{ fontSize: 11, color: "var(--muted)", display: "block", marginBottom: 4 }}>{label}</label>
+                            <input type="number"
+                              value={newPartner[key as keyof PartnerInfo] as any}
+                              onChange={(e) => setNewPartner({ ...newPartner, [key]: e.target.value === "" ? "" : Number(e.target.value) })}
+                              style={inputStyle} />
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* 시간 모름 */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                        <input type="checkbox" checked={newPartner.unknownHour}
+                          onChange={(e) => setNewPartner({ ...newPartner, unknownHour: e.target.checked })}
+                          style={{ width: 16, height: 16, cursor: "pointer", accentColor: "#6c63ff" }} />
+                        <label style={{ fontSize: 13, color: "var(--muted)" }}>태어난 시간을 모릅니다</label>
+                      </div>
+
+                      {!newPartner.unknownHour && (
+                        <div style={{ marginBottom: 10 }}>
+                          <label style={{ fontSize: 11, color: "var(--muted)", display: "block", marginBottom: 4 }}>시 (0~23)</label>
+                          <input type="number" min={0} max={23}
+                            value={newPartner.hour}
+                            onChange={(e) => setNewPartner({ ...newPartner, hour: e.target.value === "" ? "" : Number(e.target.value) })}
+                            style={inputStyle} />
+                        </div>
+                      )}
+
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button onClick={savePartner}
+                          style={{ flex: 1, padding: "10px", background: "#6c63ff", color: "white", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                          저장하고 궁합보기
+                        </button>
+                        <button onClick={() => setAddingPartner(false)}
+                          style={{ padding: "10px 16px", background: "var(--card)", color: "var(--muted)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                          취소
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 궁합 결과 */}
+                {compatLoading && (
+                  <div style={{ textAlign: "center", padding: "40px 0", color: "var(--muted)", fontSize: 14 }}>분석 중...</div>
+                )}
+
+                {compatResult && !compatLoading && (
+                  <div>
+                    {/* 종합 점수 */}
+                    <div style={{
+                      background: compatResult.compat.totalScore >= 80 ? "rgba(0,212,170,0.1)"
+                        : compatResult.compat.totalScore >= 65 ? "rgba(108,99,255,0.1)"
+                        : compatResult.compat.totalScore >= 50 ? "rgba(245,158,11,0.1)"
+                        : "rgba(255,107,107,0.1)",
+                      border: `1px solid ${compatResult.compat.totalScore >= 80 ? "rgba(0,212,170,0.3)"
+                        : compatResult.compat.totalScore >= 65 ? "rgba(108,99,255,0.3)"
+                        : compatResult.compat.totalScore >= 50 ? "rgba(245,158,11,0.3)"
+                        : "rgba(255,107,107,0.3)"}`,
+                      borderRadius: 12, padding: 16, marginBottom: 12, textAlign: "center"
+                    }}>
+                      <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>
+                        {birth.name || "나"} ↔ {compatResult.partnerName}
+                      </div>
+                      <div style={{ fontSize: 40, fontWeight: 700, color: compatResult.compat.totalScore >= 80 ? "#00d4aa" : compatResult.compat.totalScore >= 65 ? "#6c63ff" : compatResult.compat.totalScore >= 50 ? "#f59e0b" : "#ff6b6b", marginBottom: 6 }}>
+                        {compatResult.compat.totalScore}점
+                      </div>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", marginBottom: 10 }}>
+                        {compatResult.compat.grade}
+                      </div>
+                      <div style={{ fontSize: 14, color: "var(--muted)", lineHeight: 1.7 }}>
+                        {compatResult.compat.summary}
+                      </div>
+                    </div>
+
+                    {/* 일주 비교 */}
+                    <div style={{ background: "var(--bg2)", borderRadius: 12, padding: 16, marginBottom: 12 }}>
+                      <p style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>// 일주 비교</p>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 8, alignItems: "center", marginBottom: 12 }}>
+                        <div style={{ background: "var(--card)", borderRadius: 8, padding: "12px", textAlign: "center" }}>
+                          <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 4 }}>{birth.name || "나"}</div>
+                          <div style={{ fontSize: 22, fontWeight: 700, color: "#00d4aa" }}>{compatResult.myDayPillar}</div>
+                        </div>
+                        <div style={{ fontSize: 20, color: "var(--muted)" }}>↔</div>
+                        <div style={{ background: "var(--card)", borderRadius: 8, padding: "12px", textAlign: "center" }}>
+                          <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 4 }}>{compatResult.partnerName}</div>
+                          <div style={{ fontSize: 22, fontWeight: 700, color: "#a78bfa" }}>{compatResult.partnerDayPillar}</div>
+                        </div>
+                      </div>
+
+                      {compatResult.compat.dayPillarRelation ? (
+                        <div style={{ background: "var(--card)", borderRadius: 8, padding: "12px 14px" }}>
+                          <div style={{ fontSize: 12, color: "var(--accent2)", marginBottom: 4 }}>
+                            지지 관계 — {compatResult.compat.dayPillarRelation.type}
+                          </div>
+                          <div style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>
+                            {compatResult.compat.dayPillarRelation.desc}
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ background: "var(--card)", borderRadius: 8, padding: "12px 14px" }}>
+                          <div style={{ fontSize: 14, color: "var(--muted)", lineHeight: 1.7 }}>
+                            일주 지지 간 특별한 합충형 관계는 없어요.
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 오행 보완 */}
+                    <div style={{ background: "var(--bg2)", borderRadius: 12, padding: 16, marginBottom: 12 }}>
+                      <p style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>// 오행 관계</p>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>
+                        <span>점수</span>
+                        <span>{compatResult.compat.elementBalance.score}점</span>
+                      </div>
+                      <div style={{ height: 6, background: "var(--card)", borderRadius: 3, overflow: "hidden", marginBottom: 10 }}>
+                        <div style={{ height: "100%", width: `${compatResult.compat.elementBalance.score}%`, background: "#6c63ff", borderRadius: 3 }} />
+                      </div>
+                      <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>
+                        {compatResult.compat.elementBalance.desc}
+                      </p>
+                    </div>
+
+                    {/* 신강/신약 균형 */}
+                    <div style={{ background: "var(--bg2)", borderRadius: 12, padding: 16, marginBottom: 12 }}>
+                      <p style={{ fontSize: 11, color: "var(--accent)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>// 신강·신약 균형</p>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>
+                        <span>점수</span>
+                        <span>{compatResult.compat.strengthBalance.score}점</span>
+                      </div>
+                      <div style={{ height: 6, background: "var(--card)", borderRadius: 3, overflow: "hidden", marginBottom: 10 }}>
+                        <div style={{ height: "100%", width: `${compatResult.compat.strengthBalance.score}%`, background: "#00d4aa", borderRadius: 3 }} />
+                      </div>
+                      <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>
+                        {compatResult.compat.strengthBalance.desc}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
